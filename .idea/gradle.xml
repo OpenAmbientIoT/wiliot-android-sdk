@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleSettings">
+    <option name="linkedExternalProjectsSettings">
+      <GradleProjectSettings>
+        <option name="testRunner" value="CHOOSE_PER_TEST" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$" />
+        <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/wiliot-advertising" />
+            <option value="$PROJECT_DIR$/wiliot-bom" />
+            <option value="$PROJECT_DIR$/wiliot-calibration" />
+            <option value="$PROJECT_DIR$/wiliot-core" />
+            <option value="$PROJECT_DIR$/wiliot-dfu" />
+            <option value="$PROJECT_DIR$/wiliot-downstream" />
+            <option value="$PROJECT_DIR$/wiliot-edge" />
+            <option value="$PROJECT_DIR$/wiliot-network-edge" />
+            <option value="$PROJECT_DIR$/wiliot-network-meta" />
+            <option value="$PROJECT_DIR$/wiliot-queue" />
+            <option value="$PROJECT_DIR$/wiliot-resolve-data" />
+            <option value="$PROJECT_DIR$/wiliot-resolve-edge" />
+            <option value="$PROJECT_DIR$/wiliot-upstream" />
+            <option value="$PROJECT_DIR$/wiliot-virtual-bridge" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+    </option>
+  </component>
+</project>

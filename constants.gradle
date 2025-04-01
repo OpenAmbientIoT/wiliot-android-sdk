@@ -1,0 +1,59 @@
+ext {
+    // dependencies
+    core_ktx_version = '1.12.0'
+    kotlin_reflect_version = '1.9.22'
+    kotlin_plugin_version = '1.9.22'
+    kotlinx_coroutines_version = '1.6.4'
+    preference_version = "1.2.0"
+    room_version="2.5.2"
+    activity_version = "1.6.0"
+    lifecycle_version = "2.4.1"
+    retrofit2_version = "2.9.0"
+    compose_ext_version = "1.5.8"
+    compose_lib_version = "1.5.8"
+    hilt_version = "2.47"
+    camerax_version = "1.3.3"
+    mockkVersion = "1.13.2"
+
+    // app
+    min_sdk = 29
+    target_sdk = 34
+    compile_sdk = 34
+    appVersionName = "3.37.0"
+    appVersionCode = 2000
+
+    // environments
+    prodAwsDomain = "us-east-2.prod.wiliot.cloud"
+    prodAwsBaseUrl = "https://api.us-east-2.prod.wiliot.cloud"
+    prodAwsMqttUrl = "ssl://mqtt.us-east-2.prod.wiliot.cloud:8883"
+
+    prodGcpDomain = "us-central1.prod.gcp.wiliot.cloud"
+    prodGcpBaseUrl = "https://api.us-central1.prod.gcp.wiliot.cloud"
+    prodGcpMqttUrl = "ssl://mqtt.us-central1.prod.gcp.wiliot.cloud:8883"
+
+    testAwsDomain = "us-east-2.test.wiliot.cloud"
+    testAwsBaseUrl = "https://api.us-east-2.test.wiliot.cloud"
+    testAwsMqttUrl = "ssl://mqtt.us-east-2.test.wiliot.cloud:8883"
+
+    testGcpDomain = "us-central1.test.gcp.wiliot.cloud"
+    testGcpBaseUrl = "https://api.us-central1.test.gcp.wiliot.cloud"
+    testGcpMqttUrl = "ssl://mqtt.us-central1.test.gcp.wiliot.cloud:8883"
+
+    devAwsDomain = "us-east-2.dev.wiliot.cloud"
+    devAwsBaseUrl = "https://api.us-east-2.dev.wiliot.cloud"
+    devAwsMqttUrl = "ssl://mqtt.us-east-2.dev.wiliot.cloud:8883"
+
+    devGcpDomain = "us-central1.dev.gcp.wiliot.cloud"
+    devGcpBaseUrl = "https://api.us-central1.dev.gcp.wiliot.cloud"
+    devGcpMqttUrl = "ssl://mqtt.us-central1.dev.gcp.wiliot.cloud:8883"
+
+    hiveMqttUrl = "ssl://mqtt.eclipseprojects.io:8883"
+
+    // Login flag
+    useLegacyLogin = false
+
+    // CORE Logs flag
+    sdkHttpLogsEnabledInDebugMode = true
+    sdkReporterLogsPrintingEnabled = true
+
+}

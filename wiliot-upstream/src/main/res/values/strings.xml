@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wiliot Framework</string>
+    <string name="foreground_service_airplane_mode_error_title">AIRPLANE MODE ERROR</string>
+    <string name="foreground_service_airplane_mode_error_description">Click here to see details</string>
+</resources>

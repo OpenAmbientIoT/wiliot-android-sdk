@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_us_title">Upstream Service</string>
+    <string name="service_ds_title">Downstream Service</string>
+    <string name="service_mqtt_title">Transport Service</string>
+    <string name="service_content">GW ID: %s | App v: %s</string>
+    <string name="service_main_title">Wiliot Services</string>
+</resources>

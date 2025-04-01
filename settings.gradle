@@ -1,0 +1,39 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+rootProject.name = "WiliotAndroidSDK"
+include ':app'
+// SDK
+include ':wiliot-bom'
+include ':wiliot-core'
+include ':wiliot-network-edge'
+include ':wiliot-upstream'
+include ':wiliot-downstream'
+include ':wiliot-calibration'
+include ':wiliot-resolve-edge'
+include ':wiliot-queue'
+include ':wiliot-edge'
+include ':wiliot-advertising'
+include ':wiliot-dfu'
+include ':wiliot-resolve-data'
+include ':wiliot-network-meta'
+include ':wiliot-virtual-bridge'

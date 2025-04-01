@@ -1,0 +1,26 @@
+# This file serves as a control mechanism for version increments in the CI/CD pipeline.
+#
+# Each module is listed with an increment type to specify how its version should be updated,
+# if any changes are detected in its codebase during the pipeline execution.
+#
+# Enum values for increments:
+# - major: Increases the major version (e.g., 1.0.0 -> 2.0.0)
+# - minor: Increases the minor version (e.g., 1.0.0 -> 1.1.0)
+# - patch: Increases the patch version (e.g., 1.0.0 -> 1.0.1)
+#
+# If no codebase changes are detected for a specific module, CI/CD will skip incrementing its version.
+
+modules:
+  wiliot-core: minor
+  wiliot-calibration: minor
+  wiliot-downstream: minor
+  wiliot-network-edge: minor
+  wiliot-network-meta: minor
+  wiliot-queue: minor
+  wiliot-resolve-edge: minor
+  wiliot-resolve-data: minor
+  wiliot-upstream: minor
+  wiliot-virtual-bridge: minor
+  wiliot-edge: minor
+  wiliot-advertising: minor
+  wiliot-dfu: minor

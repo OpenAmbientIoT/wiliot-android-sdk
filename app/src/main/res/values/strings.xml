@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">WiliotAndroidSDK</string>
+    <string name="permission_go_to_settings">Go to settings</string>
+    <string name="permission_bluetooth_nearby_title">“Wiliot App” Would like to Use Bluetooth</string>
+    <string name="permission_bluetooth_enable_title">“Wiliot App” needs Bluetooth to be turned on</string>
+    <string name="permission_bluetooth_nearby_description">We use Bluetooth for communication with pixels and bridges</string>
+    <string name="permission_location_title">“Wiliot App” Would like to Use Location</string>
+    <string name="permission_location_description">We use location to locate and know how far pixels are from you</string>
+    <string name="permission_location_background_description">This app collects location data to enable correct location-based events generation even when the app is closed or not in use. Please, enable background location access to send necessary data to the Wiliot Cloud.</string>
+    <string name="permission_bg_location_title">“Wiliot App” Would like to Use Background Location</string>
+    <string name="permission_location_enable_title">“Wiliot App” Would like to Enable GPS</string>
+    <string name="permission_button_allow">Allow</string>
+    <string name="permission_internet_enable_title">“Wiliot App” Would like to Enable Internet Adapter</string>
+    <string name="permission_internet_enable_description">We use Internet to resolve Beacons data</string>
+    <string name="permission_optimisation_disable_title">“Wiliot App” Would like to Disable Battery optimisation</string>
+    <string name="permission_optimisation_disable_description">We should to disable Battery Optimisation in order to prevent Background Service from being killed by Operation System</string>
+    <string name="permission_camera_title">“Wiliot App” Would like to Access the Camera</string>
+    <string name="permission_camera_description">Scanning QR and Barcodes is done with a camera.</string>
+    <string name="permission_storage_title">“Wiliot App” Would like to Access Writing to External Storage</string>
+    <string name="permission_storage_description">You should allow Access for writing Files to the External Storage in order to Download Firmwares and other files that is necessary for Application to work</string>
+    <string name="permission_notifications_title">“LivingWeb App” would like to use Notifications</string>
+    <string name="permission_notifications_description">You should allow Notifications in order to make background services of the app work stable</string>
+    <string name="general_error_title">Error occurred</string>
+    <string name="general_error_description">Something went wrong</string>
+    <string name="general_ok">OK</string>
+    <string name="general_done">Done</string>
+    <string name="general_cancel">Cancel</string>
+    <string name="general_retry">Retry</string>
+</resources>
