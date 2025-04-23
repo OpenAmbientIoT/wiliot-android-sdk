@@ -29,7 +29,7 @@ internal object InterfacePacketGenerator {
 
     object BuildConfigWrapper {
         val libVersion: String
-            get() = BuildConfig.LIB_VERSION
+            get() = Wiliot.sdkVersion
     }
 
     private fun generatePayload(

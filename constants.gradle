@@ -47,8 +47,6 @@ ext {
     devGcpBaseUrl = "https://api.us-central1.dev.gcp.wiliot.cloud"
     devGcpMqttUrl = "ssl://mqtt.us-central1.dev.gcp.wiliot.cloud:8883"
 
-    hiveMqttUrl = "ssl://mqtt.eclipseprojects.io:8883"
-
     // Login flag
     useLegacyLogin = false
 

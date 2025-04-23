@@ -12,8 +12,10 @@ import com.wiliot.wiliotcore.model.Ack
 import com.wiliot.wiliotcore.model.DownlinkAction
 import com.wiliot.wiliotcore.model.DownlinkActionMessage
 import com.wiliot.wiliotcore.model.DownlinkConfigurationMessage
+import com.wiliot.wiliotcore.model.DownlinkCustomBrokerMessage
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.every
+import com.wiliot.wiliotcore.utils.helper.handleBrokerConfigurationChangeRequest
 import com.wiliot.wiliotcore.utils.helper.handleSdkConfigurationChangeRequest
 import com.wiliot.wiliotcore.utils.logTag
 import com.wiliot.wiliotcore.utils.service.WltServiceNotification
@@ -123,6 +125,7 @@ class DownstreamService : Service() {
                     when (msg) {
                         is DownlinkActionMessage -> processDownlinkActionMessage(msg)
                         is DownlinkConfigurationMessage -> processDownlinkConfigurationMessage(msg)
+                        is DownlinkCustomBrokerMessage -> processDownlinkCustomBrokerMessage(msg)
                         else -> return@collectLatest
                     }
                 }
@@ -210,6 +213,10 @@ class DownstreamService : Service() {
 
     private fun processDownlinkConfigurationMessage(msg: DownlinkConfigurationMessage) {
         Wiliot.handleSdkConfigurationChangeRequest(msg)
+    }
+
+    private fun processDownlinkCustomBrokerMessage(msg: DownlinkCustomBrokerMessage) {
+        Wiliot.handleBrokerConfigurationChangeRequest(msg)
     }
 
     private fun stopMainJob() {

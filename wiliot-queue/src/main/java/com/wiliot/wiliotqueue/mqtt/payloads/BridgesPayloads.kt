@@ -28,7 +28,7 @@ data class SoftwareGatewayCapabilitiesPayload(
             cloudManaged: Boolean
         ) = SoftwareGatewayCapabilitiesPayload(
             gatewayId = Wiliot.getFullGWId(),
-            gatewayType = if (cloudManaged) Configuration.MDK_GATEWAY_TYPE else Configuration.SOFTWARE_GATEWAY_TYPE,
+            gatewayType = Configuration.SDK_GATEWAY_TYPE,
             tagMetadataCouplingSupported = false,
             downlinkSupported = true,
             bridgeOtaUpgradeSupported = cloudManaged,
@@ -40,9 +40,9 @@ data class SoftwareGatewayCapabilitiesPayload(
                     edgeTrafficEnabled = Wiliot.configuration.uploadConfigurationTraffic,
                     bleLogsEnabled = WiliotAppConfigurationSource.configSource.isBleLogsEnabled(),
                     dataOutputTrafficFilter = Wiliot.configuration.dataOutputTrafficFilter.name,
-                    versionName = Wiliot.delegate.applicationVersionName().extractSemanticVersion()
+                    versionName = Wiliot.sdkVersion
                 ),
-                gatewayVersion = Wiliot.delegate.applicationVersionName().extractSemanticVersion()
+                gatewayVersion = Wiliot.sdkVersion
             )
         )
     }
@@ -69,7 +69,7 @@ data class GatewayInfo(
     val bCapacity: Int? = null
 )
 
-data class MDKStatusPayload(
+data class SoftwareGatewayHeartbeatPayload(
     override val gatewayId: String,
     override val gatewayType: String,
     override val gatewayConf: GatewayConfig,
@@ -85,11 +85,10 @@ data class MDKStatusPayload(
             bStatus: String,
             bCurrentMicroAmp: Long,
             bCapacity: Int,
-            bCurrentAvgMicroAmp: Int,
-            cloudManaged: Boolean
-        ) = MDKStatusPayload(
+            bCurrentAvgMicroAmp: Int
+        ) = SoftwareGatewayHeartbeatPayload(
             gatewayId = Wiliot.getFullGWId(),
-            gatewayType = if (cloudManaged) Configuration.MDK_GATEWAY_TYPE else Configuration.SOFTWARE_GATEWAY_TYPE,
+            gatewayType = Configuration.SDK_GATEWAY_TYPE,
             gatewayConf = GatewayConfig(
                 additional = AdditionalGatewayConfig(
                     pacerIntervalSeconds = TimeUnit.MILLISECONDS.toSeconds(Wiliot.configuration.pacingPeriodMs),
@@ -110,8 +109,8 @@ data class MDKStatusPayload(
                 bCapacity = bCapacity
             ),
             tagMetadataCouplingSupported = false,
-            downlinkSupported = true, // MDK has this option by default
-            bridgeOtaUpgradeSupported = true // MDK has this option by default
+            downlinkSupported = true, // Cloud-managed GW has this option by default
+            bridgeOtaUpgradeSupported = true // Cloud-managed GW has this option by default
         )
     }
 

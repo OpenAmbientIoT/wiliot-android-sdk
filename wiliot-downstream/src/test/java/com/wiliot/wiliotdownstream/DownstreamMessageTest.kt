@@ -46,7 +46,7 @@ class DownstreamMessageTest {
     fun `toDomainMessageOrNull returns DownlinkConfigurationMessage when payload matches`() {
         val payload = """
             {
-                "gatewayType":"mdk",
+                "gatewayType":"Android",
                 "gatewayConf": {
                     "apiVersion":202,
                     "gatewayVersion":"3.17.0",

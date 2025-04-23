@@ -19,6 +19,7 @@ data class DownlinkMessage(
         return when {
             isActionMessage() -> gson.fromJson(payload, DownlinkActionMessage::class.java)
             isGatewayConfigurationMessage() -> gson.fromJson(payload, DownlinkConfigurationMessage::class.java)
+            isCustomBrokerMessage() -> gson.fromJson(payload, DownlinkCustomBrokerMessage::class.java)
             else -> null
         }
     }
@@ -34,6 +35,22 @@ data class DownlinkMessage(
                 }
             }
             actionKeyFound
+        } catch (ex: MalformedJsonException) {
+            false
+        }
+    }
+
+    private fun isCustomBrokerMessage(): Boolean {
+        if (payload.isNullOrBlank()) return false
+        return try {
+            var customBrokerKeyFound = false
+            JSONObject(payload).keys().forEach {
+                if (it == "customBroker") {
+                    customBrokerKeyFound = true
+                    return@forEach
+                }
+            }
+            customBrokerKeyFound
         } catch (ex: MalformedJsonException) {
             false
         }
@@ -90,6 +107,17 @@ data class DownlinkConfigurationMessage(
     }
 
 }
+
+data class DownlinkCustomBrokerMessage(
+    val customBroker: Boolean,
+    val port: Int,
+    val brokerUrl: String,
+    val username: String,
+    val password: String,
+    val updateTopic: String,
+    val statusTopic: String,
+    val dataTopic: String
+): DownlinkDomainMessage
 
 data class DownlinkActionMessage(
     // BASE MODEL
@@ -200,6 +228,7 @@ fun DownlinkMessage.eligible(): Boolean {
     return when (val domainMessage = this.toDomainMessageOrNull()) {
         is DownlinkActionMessage -> domainMessage.action.eligible()
         is DownlinkConfigurationMessage -> return Wiliot.configuration.cloudManaged
+        is DownlinkCustomBrokerMessage -> return Wiliot.configuration.cloudManaged
         else -> false
     }
 }

@@ -13,7 +13,7 @@ import java.io.Serializable
 ) : Serializable {
 
     private val gatewayId: String = Wiliot.getFullGWId()
-    private val gatewayType: String = if (Wiliot.configuration.cloudManaged) Configuration.MDK_GATEWAY_TYPE else Configuration.SOFTWARE_GATEWAY_TYPE
+    private val gatewayType: String = Configuration.SDK_GATEWAY_TYPE
     private val timestamp: Long = System.currentTimeMillis()
     private var packets: List<PackedData> = ArrayList()
 

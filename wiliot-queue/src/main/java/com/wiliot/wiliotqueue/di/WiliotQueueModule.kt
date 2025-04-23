@@ -31,7 +31,7 @@ import com.wiliot.wiliotqueue.api.WiliotQueueApiService
 import com.wiliot.wiliotqueue.di.MessageQueueManager.UploadMsg.Companion.SYNC_PERIOD
 import com.wiliot.wiliotqueue.di.MessageQueueManager.UploadMsg.Companion.uploadJob
 import com.wiliot.wiliotqueue.mqtt.model.*
-import com.wiliot.wiliotqueue.mqtt.payloads.MDKStatusPayload
+import com.wiliot.wiliotqueue.mqtt.payloads.SoftwareGatewayHeartbeatPayload
 import com.wiliot.wiliotqueue.mqtt.payloads.PacketsLogPayload
 import com.wiliot.wiliotqueue.mqtt.payloads.SoftwareGatewayCapabilitiesPayload
 import com.wiliot.wiliotqueue.repository.TokenStorageSource
@@ -517,8 +517,8 @@ class MessageQueueManager private constructor(
                 e.printStackTrace()
             }
 
-            val topic =
-                "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            val topic = statusTopic(ownerId, fullGWId)
+
             try {
                 val jsonPayload = gson.toJson(
                     PacketsLogPayload(
@@ -562,8 +562,8 @@ class MessageQueueManager private constructor(
                 e.printStackTrace()
             }
 
-            val topic =
-                "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            val topic = statusTopic(ownerId, fullGWId)
+
             try {
                 val jsonPayload = gson.toJson(payload).also {
                     Reporter.log("publishMelAckMQTT: $it", logTag)
@@ -607,8 +607,8 @@ class MessageQueueManager private constructor(
                 e.printStackTrace()
             }
 
-            val topic =
-                "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            val topic = statusTopic(ownerId, fullGWId)
+
             try {
                 val jsonPayload = gson.toJson(
                     PacketsLogPayload(
@@ -682,8 +682,7 @@ class MessageQueueManager private constructor(
 
             if (connectionEstablished.not()) return
 
-            val topic =
-                "update${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            val topic = updateTopic(ownerId, fullGWId)
             try {
                 client.subscribe(
                     topic,
@@ -736,6 +735,9 @@ class MessageQueueManager private constructor(
     }
 
     private suspend fun getGwOwnerId(): String? {
+        if (Wiliot.brokerConfig.isCustomBroker) {
+            return Wiliot.brokerConfig.ownerId
+        }
         return takeGwAccessToken("getGwOwnerId", checkExpiration = false)
             .takeUnless { it.isBlank() }?.asJWT()?.getUsername()
     }
@@ -863,6 +865,27 @@ class MessageQueueManager private constructor(
             }
         }
 
+    private fun statusTopic(ownerId: String, fullGWId: String): String {
+        return if (Wiliot.brokerConfig.isCustomBroker)
+            Wiliot.brokerConfig.customConfig!!.statusTopic
+        else
+            "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+    }
+
+    private fun dataTopic(ownerId: String, fullGWId: String): String {
+        return if (Wiliot.brokerConfig.isCustomBroker)
+            Wiliot.brokerConfig.customConfig!!.dataTopic
+        else
+            "data${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+    }
+
+    private fun updateTopic(ownerId: String, fullGWId: String): String {
+        return if (Wiliot.brokerConfig.isCustomBroker)
+            Wiliot.brokerConfig.customConfig!!.updateTopic
+        else
+            "update${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+    }
+
     private fun pickApiService(): WiliotQueueApiService {
         return apiService()
     }
@@ -904,8 +927,7 @@ class MessageQueueManager private constructor(
 
             if (client.isConnected) {
 
-                val topic =
-                    "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$gwOwnerId/$fullGWId"
+                val topic = statusTopic(ownerId, fullGWId)
 
                 try {
                     val jsonPayload =
@@ -960,8 +982,7 @@ class MessageQueueManager private constructor(
 
             if (client.isConnected) {
 
-                val topic =
-                    "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$gwOwnerId/$fullGWId"
+                val topic = statusTopic(ownerId, fullGWId)
 
                 var bStatus = batteryStatusString(BatteryManager.BATTERY_STATUS_UNKNOWN)
                 var hwStatus: String? = null
@@ -985,13 +1006,12 @@ class MessageQueueManager private constructor(
                 try {
                     val jsonPayload =
                         Gson().toJsonTree(
-                            MDKStatusPayload.create(
+                            SoftwareGatewayHeartbeatPayload.create(
                                 hwStatus,
                                 bStatus,
                                 bCurrentMicroAmp,
                                 bCapacity,
-                                bCurrentAvgMicroAmp,
-                                Wiliot.configuration.cloudManaged
+                                bCurrentAvgMicroAmp
                             )
                         ).asJsonObject
                     if (Wiliot.extraGatewayInfoSynchronized.isNotEmpty()) {
@@ -1049,8 +1069,7 @@ class MessageQueueManager private constructor(
                     location.longitude
                 )
 
-            val topic =
-                "data${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            val topic = dataTopic(ownerId, fullGWId)
 
             if (data.isNotEmpty()) {
                 lastQueueUpload = System.currentTimeMillis()
@@ -1086,7 +1105,10 @@ class MessageQueueManager private constructor(
             val fullGWId = Wiliot.getFullGWId()
             var gwAccessToken: String?
             this.takeIf { !it.isConnected }?.apply {
-                gwAccessToken = takeGwAccessToken("establishMqttClientConnection")
+                gwAccessToken = if (Wiliot.brokerConfig.isCustomBroker.not())
+                    takeGwAccessToken("establishMqttClientConnection")
+                else
+                    Wiliot.brokerConfig.customConfig!!.password
                 if (BuildConfig.DEBUG) {
                     Reporter.log(
                         "establishMqttClientConnection(tag: $callerTag) -> client connect...",
@@ -1116,12 +1138,15 @@ class MessageQueueManager private constructor(
         fullGWId: String,
     ) =
         MqttConnectOptions().apply {
-            userName = ownerId
+            userName = if (Wiliot.brokerConfig.isCustomBroker) Wiliot.brokerConfig.customConfig!!.username else ownerId
             password = gwAccessToken?.toCharArray()
             isAutomaticReconnect = false
             keepAliveInterval = 60
             setWill(
-                "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId",
+                if (Wiliot.brokerConfig.isCustomBroker)
+                    Wiliot.brokerConfig.customConfig!!.statusTopic
+                else
+                    "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId",
                 willPayloadByteArray,
                 0,
                 false

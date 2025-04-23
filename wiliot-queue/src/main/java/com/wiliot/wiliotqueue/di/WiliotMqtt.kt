@@ -4,16 +4,15 @@ import android.app.Application
 import android.util.Log
 import com.google.gson.Gson
 import com.wiliot.wiliotcore.Wiliot
-import com.wiliot.wiliotcore.contracts.WiliotQueueModule
 import com.wiliot.wiliotcore.getWithApplicationContext
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
 import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
 import com.wiliot.wiliotcore.utils.Reporter
+import com.wiliot.wiliotcore.utils.ResettableLazy
 import com.wiliot.wiliotcore.utils.logTag
+import com.wiliot.wiliotcore.utils.resettableLazy
 import com.wiliot.wiliotcore.utils.weak
 import com.wiliot.wiliotqueue.BuildConfig
-import com.wiliot.wiliotqueue.WiliotQueue
-import com.wiliot.wiliotqueue.config.Configuration
 import com.wiliot.wiliotqueue.mqtt.payloads.SoftwareGatewayCapabilitiesPayload
 import info.mqtt.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
@@ -28,15 +27,26 @@ internal class MqttProvider(
     private val testGcpClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideTestGcpMQTTClient(),
     private val devAwsClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideDevAwsMQTTClient(),
     private val devGcpClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideDevGcpMQTTClient(),
-    private val verificationClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideVerificationMQTTClient()
+    private val customClient: ResettableLazy<MqttAndroidClient> = WiliotMqttClientsModule.provideCustomMQTTClient()
 ) : MqttClientProviderContract {
 
     private val logTag = logTag()
 
+    private var customClientInitialized = false
+
     override fun getForEnvironment(environment: String): MqttAndroidClient {
-        if (WiliotQueue.configuration.useVerificationBroker) {
-            Reporter.log("QUEUE CONFIGURED TO USE VERIFICATION BROKER!", logTag, highlightError = true)
-            return verificationClient.value
+        if (Wiliot.brokerConfig.isCustomBroker) {
+            Reporter.log("QUEUE CONFIGURED TO USE CUSTOM BROKER!", logTag, highlightError = true)
+            return customClient.value.also {
+                customClientInitialized = true
+            }
+        } else {
+            if (customClientInitialized) {
+                WiliotMqttClientsModule.resetCustomMqttClient()
+                customClient.reset().also {
+                    customClientInitialized = false
+                }
+            }
         }
         return EnvironmentWiliot.entries.first {
             it.value == environment
@@ -77,7 +87,7 @@ private object WiliotMqttClientsModule {
     private var mqttClientTestGcp: Lazy<MqttAndroidClient>? = null
     private var mqttClientDevAws: Lazy<MqttAndroidClient>? = null
     private var mqttClientDevGcp: Lazy<MqttAndroidClient>? = null
-    private var mqttClientVerification: Lazy<MqttAndroidClient>? = null
+    private var mqttClientCustom: ResettableLazy<MqttAndroidClient>? = null
 
     private const val logTag = "MQTT"
 
@@ -368,26 +378,26 @@ private object WiliotMqttClientsModule {
         return mqttClientDevGcp!!
     }
 
-    fun provideVerificationMQTTClient(
+    fun provideCustomMQTTClient(
         app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
         gatewayId: String = Wiliot.getFullGWId(),
         callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientVerification == null) {
-            mqttClientVerification = lazy {
+    ): ResettableLazy<MqttAndroidClient> {
+        if (mqttClientCustom == null) {
+            mqttClientCustom = resettableLazy {
                 MqttAndroidClient(
                     app,
-                    BuildConfig.HIVE_MQTT_URL,
+                    Wiliot.brokerConfig.broker,
                     gatewayId
                 ).apply {
                     setCallback(
                         callback.also {
-                            it.setDebugData("DevGcpMqttClient")
+                            it.setDebugData("CustomMqttClient")
                             it.setupClient(
                                 client = this,
                                 gatewayId = gatewayId,
                                 currentOwnerId = {
-                                    Wiliot.configuration.ownerId
+                                    Wiliot.brokerConfig.ownerId
                                 }
                             )
                         }
@@ -395,7 +405,12 @@ private object WiliotMqttClientsModule {
                 }
             }
         }
-        return mqttClientVerification!!
+        return mqttClientCustom!!
+    }
+
+    fun resetCustomMqttClient() {
+        mqttClientCustom?.reset()
+        mqttClientCustom = null
     }
 
 }

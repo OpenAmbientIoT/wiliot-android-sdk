@@ -2,6 +2,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
+    id("signing")
 }
 
 apply(from = "../constants.gradle")
@@ -66,6 +67,8 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }
 
+val isMavenCentral = project.findProperty("releaseToMavenCentral") == "true"
+
 publishing {
     publications {
         create<MavenPublication>("release") {
@@ -76,17 +79,67 @@ publishing {
             afterEvaluate {
                 from(components["release"])
             }
+
+            pom {
+                name.set("Wiliot Android SDK")
+                description.set("Virtual Bridge SDK module for Wiliot Android integration")
+                url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("wiliot")
+                        name.set("Wiliot")
+                        email.set("support@wiliot.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
+                    developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
+                    url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+                }
+            }
         }
     }
 
     repositories {
-        mavenLocal()
-        maven {
-            url = uri("https://wiliot-cloud-096303741971.d.codeartifact.us-east-2.amazonaws.com/maven/maven/")
-            credentials {
-                username = "aws"
-                password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
+        if (isMavenCentral) {
+            maven {
+                name = "MavenCentral"
+                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+                credentials {
+                    username = System.getenv("OSSRH_USERNAME")
+                    password = System.getenv("OSSRH_PASSWORD")
+                }
+            }
+        } else {
+            mavenLocal()
+            maven {
+                name = "CodeArtifact"
+                url = uri("https://wiliot-cloud-096303741971.d.codeartifact.us-east-2.amazonaws.com/maven/maven/")
+                credentials {
+                    username = "aws"
+                    password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
+                }
             }
         }
+    }
+}
+
+signing {
+    if (isMavenCentral) {
+        useInMemoryPgpKeys(
+            System.getenv("SIGNING_KEY_ID"),
+            System.getenv("SIGNING_KEY"),
+            System.getenv("SIGNING_PASSWORD")
+        )
+        sign(publishing.publications["release"])
     }
 }

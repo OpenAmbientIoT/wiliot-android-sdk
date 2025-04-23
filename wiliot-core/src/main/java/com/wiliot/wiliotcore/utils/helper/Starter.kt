@@ -4,6 +4,7 @@ import com.wiliot.wiliotcore.FlowVersion
 import com.wiliot.wiliotcore.ServiceState
 import com.wiliot.wiliotcore.Wiliot
 import com.wiliot.wiliotcore.WiliotCounter
+import com.wiliot.wiliotcore.config.BrokerConfig
 import com.wiliot.wiliotcore.config.Configuration
 import com.wiliot.wiliotcore.contracts.CommandsQueueManagerContract
 import com.wiliot.wiliotcore.contracts.EdgeNetworkManagerContract
@@ -27,6 +28,7 @@ import com.wiliot.wiliotcore.health.WiliotHealthMonitor
 import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
 import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
 import com.wiliot.wiliotcore.model.DownlinkConfigurationMessage
+import com.wiliot.wiliotcore.model.DownlinkCustomBrokerMessage
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.logTag
 import kotlinx.coroutines.CoroutineScope
@@ -71,7 +73,7 @@ object WiliotAppConfigurationSource {
         override fun resolveEnabled(): Boolean = true
         override fun excludeMqttTraffic(): Boolean = false
         override fun isServicePhoenixEnabled(): Boolean = false
-        override fun isRunningInCloudManagedMode(): Boolean = false
+        override fun isRunningInCloudManagedMode(): Boolean = true
         override fun isPrecisePositioningEnabled(): Boolean = false
         override fun dataOutputTrafficFilter(): AdditionalGatewayConfig.DataOutputTrafficFilter = AdditionalGatewayConfig.DataOutputTrafficFilter.BRIDGES_AND_PIXELS
         override fun btPacketsCounterEnabled(): Boolean = false
@@ -319,6 +321,15 @@ private val VirtualBridgeModule: WiliotVirtualBridgeModule?
 // region [Cloud Management]
 
 private val starterScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+fun Wiliot.handleBrokerConfigurationChangeRequest(newConfiguration: DownlinkCustomBrokerMessage) {
+    brokerConfig = if (newConfiguration.customBroker) {
+        BrokerConfig(newConfiguration)
+    } else {
+        BrokerConfig(null)
+    }
+    restartWiliot()
+}
 
 fun Wiliot.handleSdkConfigurationChangeRequest(newConfiguration: DownlinkConfigurationMessage) {
 

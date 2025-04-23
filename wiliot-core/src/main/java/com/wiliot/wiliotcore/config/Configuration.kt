@@ -38,9 +38,10 @@ data class Configuration(
      */
     val phoenix: Boolean = false,
     /**
-     * Flag that defines SDK configuration source: either by Cloud commands or by local configuration
+     * Flag that defines SDK configuration source: either by Cloud commands or by local configuration;
+     * Default value is 'true', and you shouldn't disable it without good reason (TEST/DEBUG purposes)
      */
-    val cloudManaged: Boolean = false,
+    val cloudManaged: Boolean = true,
     val precisePositioningEnabled: Boolean = false,
 
     // SDK config
@@ -83,8 +84,7 @@ data class Configuration(
         val DEFAULT_ENVIRONMENT = EnvironmentWiliot.PROD_AWS
         const val DEFAULT_PACING_PERIOD_MS: Long = 10_000 // ms
 
-        const val SOFTWARE_GATEWAY_TYPE = "mobile"
-        const val MDK_GATEWAY_TYPE = "mdk"
+        const val SDK_GATEWAY_TYPE = "Android"
 
         const val DEFAULT_BRIDGE_PRESENCE_TIMEOUT_MS: Long = 120_000 // 2 min
     }

@@ -1,0 +1,7 @@
+# Ignore internal-use modules
+wiliot-network-meta/
+wiliot-resolve-data/
+wiliot-resolve-edge/
+
+# Ignore CI/CD logic
+.github/

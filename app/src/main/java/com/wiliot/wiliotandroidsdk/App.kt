@@ -36,12 +36,13 @@ class App : Application(), Wiliot.ContextInitializationProvider {
                 override fun btPacketsCounterEnabled(): Boolean = true
 
                 // optional (force restarts in case of failure)
+                // Note, that you should also specify the `applicationPackage` and `launcherActivity`
                 override fun isServicePhoenixEnabled(): Boolean = true
-
-                // recommended to set it to 'true' to be able to manage GW settings from Platform
-                override fun isRunningInCloudManagedMode() = true
             }
         )
+
+        Wiliot.applicationPackage = "com.wiliot.wiliotandroidsdk"
+        Wiliot.launcherActivity = "com.wiliot.wiliotandroidsdk.MainActivity"
 
         Wiliot.init {
             this contextProviderBy this@App
@@ -49,6 +50,10 @@ class App : Application(), Wiliot.ContextInitializationProvider {
             setApiKey("OTNiNDlmNGItOGY0OC00OTE3LTk5ZDUtMWUzNjhmMzEyNDI5OlI0RUNCN1Z1WmZBVWZSWFZxQjZwZzd2ZzNINDVVVVZvNEN1WjZKYzlsQ1k=")
 
             this frameworkDelegateBy object : FrameworkDelegate() {
+                override fun applicationName(): String {
+                    return "Wiliot SDK Sample App"
+                }
+
                 override fun applicationVersion(): Int {
                     return getAppVersion().first
                 }

@@ -13,7 +13,7 @@ internal class GatewayMQTT(
 ) : Serializable {
 
     private val gatewayId: String = Wiliot.getFullGWId()
-    private val gatewayType: String = if (Wiliot.configuration.cloudManaged) Configuration.MDK_GATEWAY_TYPE else Configuration.SOFTWARE_GATEWAY_TYPE
+    private val gatewayType: String = Configuration.SDK_GATEWAY_TYPE
     private val gatewayName: String = Wiliot.getFullGWId()
 
     private val timestamp: Long = System.currentTimeMillis()

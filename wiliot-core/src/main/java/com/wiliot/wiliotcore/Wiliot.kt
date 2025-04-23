@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.location.Location
 import androidx.core.app.NotificationManagerCompat
+import com.wiliot.wiliotcore.config.BrokerConfig
 import com.wiliot.wiliotcore.config.Configuration
 import com.wiliot.wiliotcore.contracts.PrimaryTokenExpirationCallback
 import com.wiliot.wiliotcore.contracts.WiliotModule
@@ -30,6 +31,9 @@ import java.util.Collections
 
 object Wiliot {
 
+    val sdkVersion: String
+        get() = BuildConfig.BOM_VERSION
+
     internal val tokenInjectionConsumers: MutableSet<PrimaryTokenInjectionConsumer> = mutableSetOf()
 
     internal val modules: MutableSet<WiliotModule> = mutableSetOf()
@@ -53,10 +57,16 @@ object Wiliot {
     internal var applicationPackageName: String = "com.wiliot.app" // just a default value
     internal var applicationMainActivity: String = "com.wiliot.app.MainActivity" // just a default value
 
-    val applicationPackage: String
+    var applicationPackage: String
         get() = applicationPackageName
-    val launcherActivity: String
+        set(value) {
+            applicationPackageName = value
+        }
+    var launcherActivity: String
         get() = applicationMainActivity
+        set(value) {
+            applicationMainActivity = value
+        }
 
     internal var initialized: Boolean = false
     val isInitialized: Boolean
@@ -113,6 +123,7 @@ object Wiliot {
         uniqueDeviceId = getWithApplicationContext { gwId() }!!
 
         WiliotHeadersSystemInfo.apply {
+            appName = delegate.applicationName()
             appVersion = delegate.applicationVersionName()
             appVersionCode = delegate.applicationVersion().toString()
             gwId = uniqueDeviceId
@@ -148,6 +159,8 @@ object Wiliot {
 
     var configuration: Configuration = Configuration()
     var delegate: FrameworkDelegate = object : FrameworkDelegate() {}
+
+    var brokerConfig: BrokerConfig = BrokerConfig()
 
     fun getFullGWId(): String = if (initialized) uniqueDeviceId else throw IllegalStateException(
         "Wiliot SDK not initialized. You should call Wiliot.initialize(Context) before accessing SDK features"

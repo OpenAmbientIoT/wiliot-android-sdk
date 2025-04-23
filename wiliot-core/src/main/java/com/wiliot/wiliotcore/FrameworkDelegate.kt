@@ -19,6 +19,10 @@ abstract class FrameworkDelegate {
         return "unknown"
     }
 
+    open fun applicationName(): String {
+        return "Unknown Application"
+    }
+
     open fun onNewSoftwareGatewayConfigurationApplied() {}
 
     companion object {

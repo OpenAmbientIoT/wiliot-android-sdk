@@ -1,6 +1,7 @@
 package com.wiliot.wiliotcore.utils.network
 
 import android.os.Build
+import com.wiliot.wiliotcore.Wiliot
 import okhttp3.Interceptor
 import okhttp3.Response
 
@@ -24,7 +25,9 @@ class WiliotHeadersInterceptor : Interceptor {
 }
 
 private fun userAgent(): String = StringBuilder()
-    .append("Wiliot App V3 ${WiliotHeadersSystemInfo.appVersion} BUILD ${WiliotHeadersSystemInfo.appVersionCode}")
+    .append("${WiliotHeadersSystemInfo.appName} ${WiliotHeadersSystemInfo.appVersion} BUILD ${WiliotHeadersSystemInfo.appVersionCode}")
+    .append(" ")
+    .append("SDK VER ${Wiliot.sdkVersion}")
     .append(" ")
     .append("OS ${WiliotHeadersSystemInfo.os} ${WiliotHeadersSystemInfo.osVersion}")
     .append(" ")
@@ -49,6 +52,12 @@ object WiliotHeadersSystemInfo {
                 "$manufacturer $model"
             }
         }
+
+    /**
+     * Application name could not be retrieved by SDK itself. So it is necessary to provide it
+     * at Application startup. It is recommended to use it in 'Application.onCreate()' method.
+     */
+    var appName: String = "Unknown App"
 
     /**
      * Application version name could not be retrieved by SDK itself. So it is necessary to provide it
