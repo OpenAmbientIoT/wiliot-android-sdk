@@ -1,0 +1,109 @@
+name: Force Test & Publish All SDK Modules
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+  AWS_REGION: 'us-east-2'
+  AWS_DOMAIN: 'wiliot-cloud'
+  AWS_DOMAIN_OWNER: '096303741971'
+
+jobs:
+  publish-all:
+    runs-on: [self-hosted, terraform, eks, platform]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Create sdk.properties with Wiliot API key
+        run: echo "wiliotApiKey=${{ secrets.WILIOT_API_KEY }}" > sdk.properties
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK Tools
+        run: |
+          sdkmanager "platform-tools" \
+                     "platforms;android-34" \
+                     "build-tools;34.0.0" \
+                     "cmdline-tools;latest" \
+                     "ndk;25.2.9519653" \
+                     "cmake;3.22.1"
+
+      - name: Define All SDK Modules
+        run: |
+          echo "Forcing all SDK modules to be included"
+          MODULES=$(find . -maxdepth 1 -type d -name 'wiliot-*' -exec basename {} \; | sort)
+          echo "$MODULES" | tr ' ' '\n' > changed_sdk_modules.txt
+          echo "MODULES=$MODULES" >> $GITHUB_ENV
+
+      - name: Retrieve AWS CodeArtifact token
+        run: |
+          TOKEN=$(aws codeartifact get-authorization-token \
+            --domain ${{ env.AWS_DOMAIN }} \
+            --domain-owner ${{ env.AWS_DOMAIN_OWNER }} \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$TOKEN"
+          echo "CODEARTIFACT_AUTH_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: Make script executable
+        run: chmod +x .scripts/update_versions_with_bom.sh
+
+      - name: Update SDK and BOM Versions
+        run: ./.scripts/update_versions_with_bom.sh
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit Updated Versions
+        run: |
+          git add sdk-versions.gradle
+          git commit -m "chore: Bump SDK & BOM versions [skip ci]" || echo "No changes to commit"
+          git push origin HEAD
+
+      - name: Run Unit Tests
+        run: |
+          echo "Running tests for modules: $MODULES"
+          for module in $MODULES; do
+            if [[ "$module" == *"bom"* ]]; then
+              echo "⚠️ Skipping tests for $module (no tests expected)"
+              continue
+            fi
+            echo "✅ Running tests for: $module"
+            ./gradlew --parallel :$module:testReleaseUnitTest
+          done
+
+      - name: Publish All SDK Modules to CodeArtifact
+        run: |
+          echo "Publishing modules: $MODULES"
+          for module in $MODULES; do
+            ./gradlew --parallel :$module:publish
+          done
+
+      - name: Wait for CodeArtifact to sync
+        run: sleep 60
+
+      - name: Trigger Wiliot App Action
+        env:
+          TOKEN: ${{ secrets.WILIOT_APP_DISPATCH_TOKEN }}
+        run: |
+          curl -X POST https://api.github.com/repos/${{ secrets.WILIOT_APP_REPO }}/dispatches \
+            -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{"event_type": "${{ secrets.WILIOT_APP_EVENT_TYPE }}"}'

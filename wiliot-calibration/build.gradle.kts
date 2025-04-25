@@ -5,7 +5,7 @@ plugins {
     id("signing")
 }
 
-// Apply shared properties
+// Apply shared properties.
 apply(from = "../constants.gradle")
 apply(from = "../sdk-versions.gradle")
 

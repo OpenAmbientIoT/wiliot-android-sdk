@@ -6,7 +6,7 @@ plugins {
     id("signing")
 }
 
-// Apply constants and SDK version files
+// Apply constants and SDK version files.
 apply(from = "../constants.gradle")
 apply(from = "../sdk-versions.gradle")
 

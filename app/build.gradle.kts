@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.dagger.hilt)
 }
 
+apply(from = "../secret.gradle")
+
 android {
     namespace = "com.wiliot.wiliotandroidsdk"
     compileSdk = 35
@@ -16,6 +18,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "WILIOT_API_KEY", "\"${project.extra["wiliotApiKey"]}\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,6 +46,9 @@ android {
     buildFeatures {
         compose = true
     }
+
+    android.buildFeatures.buildConfig = true
+
 }
 
 dependencies {

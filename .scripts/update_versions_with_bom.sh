@@ -62,7 +62,8 @@ for MODULE in "${CHANGED_MODULES[@]}"; do
     fi
 
     # Map module name to version key in sdk-versions.gradle
-    VERSION_KEY=$(echo "$MODULE" | sed 's/wiliot-//g' | sed -r 's/(^|-)([a-z])/\U\2/g')VersionName
+    VERSION_KEY=$(echo "$MODULE" | sed 's/wiliot-//' | awk -F'-' '{for(i=1;i<=NF;i++) printf "%s", (i==1 ? $i : toupper(substr($i,1,1)) substr($i,2))}END{printf "VersionName"}')
+    echo "Checking $MODULE → $VERSION_KEY"
 
     # Extract the current version
     CURRENT_VERSION=$(grep "$VERSION_KEY" "$SDK_VERSIONS_FILE" | awk -F'"' '{print $2}')

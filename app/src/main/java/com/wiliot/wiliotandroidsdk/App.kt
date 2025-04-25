@@ -47,7 +47,7 @@ class App : Application(), Wiliot.ContextInitializationProvider {
         Wiliot.init {
             this contextProviderBy this@App
 
-            setApiKey("OTNiNDlmNGItOGY0OC00OTE3LTk5ZDUtMWUzNjhmMzEyNDI5OlI0RUNCN1Z1WmZBVWZSWFZxQjZwZzd2ZzNINDVVVVZvNEN1WjZKYzlsQ1k=")
+            setApiKey(BuildConfig.WILIOT_API_KEY)
 
             this frameworkDelegateBy object : FrameworkDelegate() {
                 override fun applicationName(): String {

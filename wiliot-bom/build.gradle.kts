@@ -4,7 +4,7 @@ plugins {
     signing
 }
 
-// Apply shared version constants
+// Apply shared version constants.
 apply(from = "../sdk-versions.gradle")
 
 group = "com.wiliot"

@@ -6,6 +6,7 @@ plugins {
     id("signing")
 }
 
+// Apply shared config files.
 apply(from = "../constants.gradle")
 apply(from = "../sdk-versions.gradle")
 
