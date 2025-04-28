@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - develop
+  pull_request:
+    branches:
+      - develop
+    types:
+      - closed
   workflow_dispatch:
 
 permissions:
@@ -17,6 +22,7 @@ env:
 
 jobs:
   publish-if-needed:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: [self-hosted, terraform, eks, platform]
 
     steps:
@@ -48,8 +54,11 @@ jobs:
 
       - name: Detect Changed SDK Modules
         run: |
-          echo "Comparing against base SHA: ${{ github.event.before }}"
-          git diff --name-only ${{ github.event.before }} HEAD > changed_files.txt || true
+          echo "Detecting SDK module changes"
+          BASE_SHA=$(git merge-base origin/develop HEAD)
+          echo "Base SHA for comparison: $BASE_SHA"
+
+          git diff --name-only $BASE_SHA HEAD > changed_files.txt || true
 
           grep -Eo 'wiliot-[^/]+' changed_files.txt | sort -u | sed '/^\s*$/d' > changed_sdk_modules.txt
 

@@ -1,19 +1,19 @@
 name: Run Tests and Sync Public SDK (master)
 
 on:
-  push:
+  pull_request:
     branches:
       - master
+    types:
+      - closed
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 env:
   CI: true
 
 jobs:
   test-and-sync:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: [self-hosted, terraform, eks, platform]
 
     steps:

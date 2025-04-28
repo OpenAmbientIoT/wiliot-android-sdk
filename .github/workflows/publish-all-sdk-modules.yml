@@ -46,9 +46,9 @@ jobs:
       - name: Define All SDK Modules
         run: |
           echo "Forcing all SDK modules to be included"
-          MODULES=$(find . -maxdepth 1 -type d -name 'wiliot-*' -exec basename {} \; | sort)
+          MODULES=$(find . -maxdepth 1 -type d -name 'wiliot-*' -exec basename {} \; | sort | tr '\n' ' ')
           echo "$MODULES" | tr ' ' '\n' > changed_sdk_modules.txt
-          echo "MODULES=$MODULES" >> $GITHUB_ENV
+          printf "MODULES=%s\n" "$MODULES" >> "$GITHUB_ENV"
 
       - name: Retrieve AWS CodeArtifact token
         run: |
