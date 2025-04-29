@@ -57,6 +57,9 @@ jobs:
           echo "Cloning public repo..."
           git clone --depth=1 "$PUBLIC_REPO" public-sdk
           cd public-sdk
+          
+          echo "Adding public-wlt remote for pushing..."
+          git remote add public-wlt "$PUBLIC_REPO"
 
           cd "$GITHUB_WORKSPACE"
 
@@ -71,4 +74,4 @@ jobs:
 
           git add .
           git commit -m "chore: Sync public SDK from internal repo [skip ci]" || echo "Nothing to commit"
-          git push origin master
+          git push public-wlt master
