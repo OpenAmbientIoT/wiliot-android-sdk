@@ -14,6 +14,7 @@ import com.wiliot.wiliotcore.setApiKey
 import com.wiliot.wiliotcore.utils.helper.WiliotAppConfigurationSource
 import com.wiliot.wiliotdownstream.feature.initDownstream
 import com.wiliot.wiliotedge.initEdge
+import com.wiliot.wiliotnetworkedge.initEdgeNetwork
 import com.wiliot.wiliotqueue.initQueue
 import com.wiliot.wiliotupstream.feature.initUpstream
 import com.wiliot.wiliotvirtualbridge.feature.initVirtualBridge
@@ -73,6 +74,7 @@ class App : Application(), Wiliot.ContextInitializationProvider {
 
             initQueue()
             initEdge()
+            initEdgeNetwork()
             initVirtualBridge()
             initUpstream()
             initDownstream()

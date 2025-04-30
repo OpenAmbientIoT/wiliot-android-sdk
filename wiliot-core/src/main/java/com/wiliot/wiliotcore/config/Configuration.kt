@@ -6,6 +6,7 @@ import com.wiliot.wiliotcore.model.AdditionalGatewayConfig.DataOutputTrafficFilt
 import java.util.concurrent.TimeUnit
 
 data class Configuration(
+
     // User-identity configs
     /**
      * Owner ID of current session. Required to run SDK. Running SDK with 'null' value
@@ -84,7 +85,7 @@ data class Configuration(
         val DEFAULT_ENVIRONMENT = EnvironmentWiliot.PROD_AWS
         const val DEFAULT_PACING_PERIOD_MS: Long = 10_000 // ms
 
-        const val SDK_GATEWAY_TYPE = "Android"
+        const val SDK_GATEWAY_TYPE = "android"
 
         const val DEFAULT_BRIDGE_PRESENCE_TIMEOUT_MS: Long = 120_000 // 2 min
     }

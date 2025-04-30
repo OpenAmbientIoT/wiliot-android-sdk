@@ -58,8 +58,8 @@ jobs:
           git clone --depth=1 "$PUBLIC_REPO" public-sdk
           cd public-sdk
           
-          echo "Adding public-wlt remote for pushing..."
-          git remote add public-wlt "$PUBLIC_REPO"
+          echo "Reconfiguring origin to use token..."
+          git remote set-url origin "$PUBLIC_REPO"
 
           cd "$GITHUB_WORKSPACE"
 
