@@ -78,7 +78,6 @@ internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>,
     ): MQTTBaseData? {
         val jsonObject = json?.asJsonObject
         val payload = jsonObject?.get("payload")?.asString
-        val sequenceId = jsonObject?.get("sequenceId")?.asLong
         val rssi = jsonObject?.get("rssi")?.asInt
         val timestamp = jsonObject?.get("timestamp")?.asLong ?: 0
         val aliasBridgeId = jsonObject?.get("aliasBridgeId")?.asString
@@ -86,14 +85,13 @@ internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>,
         return when (typeOfT) {
             PackedEdgeDataMQTT::class.java -> PackedEdgeDataMQTT(
                 payload,
-                sequenceId,
                 rssi,
                 timestamp,
                 aliasBridgeId
             )
 
             PackedDataMetaMQTT::class.java -> {
-                PackedDataMetaMQTT(payload, sequenceId, rssi, timestamp, aliasBridgeId, false)
+                PackedDataMetaMQTT(payload, rssi, timestamp, aliasBridgeId, false)
             }
 
             else -> null

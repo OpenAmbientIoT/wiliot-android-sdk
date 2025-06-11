@@ -986,14 +986,13 @@ abstract class BridgePacketAbstract(
 abstract class PacketAbstract : Packet {
     override fun equals(other: Any?): Boolean {
         return when (other) {
-            is DataPacket -> value == other.value
-            is PacketAbstract -> pTel2.toUInt(16) == other.pTel2.toUInt(16)
+            is PacketAbstract -> value == other.value
             else -> false
         }
     }
 
     override fun hashCode(): Int {
-        return pTel2.hashCode()
+        return value.hashCode()
     }
 }
 
@@ -1077,6 +1076,30 @@ interface Packet {
                 return prefixMatches && lengthMatches
             }
 
+        private fun ScanResultInternal.toSensorBle5PacketOrNull(): String? {
+            try {
+                val normalized = scanRecord?.raw?.uppercase() ?: return null
+                var index = 0
+                var endIndex = 0
+
+                while (index + 2 <= normalized.length) {
+                    val lengthHex = normalized.substring(index, index + 2)
+                    val length = lengthHex.toIntOrNull(16) ?: return null
+                    if (length == 0) break
+
+                    val chunkTotalLength = (1 + length) * 2 // length + type + payload, in hex chars
+                    if (index + chunkTotalLength > normalized.length) break
+
+                    endIndex = index + chunkTotalLength
+                    index = endIndex
+                }
+
+                return if (endIndex > 0) normalized.substring(4, endIndex) else null
+            } catch (ex: Exception) {
+                return null
+            }
+        }
+
         private const val DATA_PACKET_LEN_CHARS = 58
         private val GROUP_ID_META: UInt = "ec".toUInt(16)
         private val GROUP_ID_CONTROL: UInt = "ed".toUInt(16)
@@ -1086,52 +1109,57 @@ interface Packet {
         private val GROUP_ID_COMBINED_SI_2: UInt = "3d".toUInt(16)
         private val GROUP_ID_COMBINED_SI_3: UInt = "3c".toUInt(16)
 
-        fun from(data: String, scanRecord: ScanResultInternal) = with(data) {
+        fun from(data: String, scanRecord: ScanResultInternal): PacketAbstract? {
             if (scanRecord.isBridgeEarlyPacket) {
-                return@with BridgeEarlyPacket(scanResult = scanRecord)
+                return BridgeEarlyPacket(scanResult = scanRecord)
             }
 
-            if (length != DATA_PACKET_LEN_CHARS) {
-                Reporter.exception(
-                    message = "Packet length mismatch",
-                    exception = Exception("Packet length mismatch"),
-                    where = "Packet/BeaconWiliot"
-                )
-                return@with null
+            var finalData = data
+
+            if (data.length != DATA_PACKET_LEN_CHARS) {
+                // Maybe Sensor BLE 5?
+                scanRecord.toSensorBle5PacketOrNull()?.let {
+                    finalData = it
+                } ?: run {
+                    Reporter.exception(
+                        message = "Packet length mismatch",
+                        exception = Exception("Packet length mismatch"),
+                        where = "Packet/BeaconWiliot"
+                    )
+                    return null
+                }
             }
 
-            when {
-                data.isSensorPacket -> {
+            return when {
+                finalData.isSensorPacket -> {
                     when {
-                        data.isSensorMetaPacket -> ExternalSensorPacket(data, scanRecord)
-                        else -> DataPacket(data, scanRecord)
+                        finalData.isSensorMetaPacket -> ExternalSensorPacket(finalData, scanRecord)
+                        else -> DataPacket(finalData, scanRecord)
                     }
                 }
-                data.isCombinedSiPacket -> CombinedSiPacket(data, scanRecord)
-                data.isSensorMetaPacket -> ExternalSensorPacket(data,
-                    scanRecord
-                ) // should always execute BEFORE 'isMetaPacket'
-                data.isMetaPacket -> MetaPacket(data, scanRecord)
-                data.isControlPacket -> ControlPacket(data, scanRecord)
-                data.isBridgeCfgPacket -> with(data) {
+                finalData.isCombinedSiPacket -> CombinedSiPacket(finalData, scanRecord)
+                finalData.isSensorMetaPacket -> ExternalSensorPacket(finalData, scanRecord) // should always execute BEFORE 'isMetaPacket'
+                finalData.isMetaPacket -> MetaPacket(finalData, scanRecord)
+                finalData.isControlPacket -> ControlPacket(finalData, scanRecord)
+                finalData.isBridgeCfgPacket -> with(finalData) {
                     when {
-                        isV5plus -> BridgeConfigPacketV5(data, scanRecord)
-                        isV3 -> BridgeConfigPacketV3(data, scanRecord)
+                        isV5plus -> BridgeConfigPacketV5(finalData, scanRecord)
+                        isV3 -> BridgeConfigPacketV3(finalData, scanRecord)
                         else -> null
                     }
                 }
 
-                data.isMelModulePacket -> MelModulePacket(data, scanRecord)
+                data.isMelModulePacket -> MelModulePacket(finalData, scanRecord)
 
-                data.isBridgeACK -> BridgeACKPacket(data, scanRecord)
-                data.isHBMessage -> with(data) {
+                data.isBridgeACK -> BridgeACKPacket(finalData, scanRecord)
+                data.isHBMessage -> with(finalData) {
                     when {
-                        isHbV5 -> BridgeHbPacketV5(data, scanRecord)
-                        else -> BridgeHbPacket(data, scanRecord)
+                        isHbV5 -> BridgeHbPacketV5(this, scanRecord)
+                        else -> BridgeHbPacket(this, scanRecord)
                     }
                 }
 
-                else -> DataPacket(data, scanRecord)
+                else -> DataPacket(finalData, scanRecord)
             }
         }
     }

@@ -1,18 +1,20 @@
 package com.wiliot.wiliotcore
 
+import java.util.concurrent.atomic.AtomicLong
+
 object WiliotCounter {
 
-    private var mCounter: Long = 1
+    private var mCounter = AtomicLong(1)
 
     val value: Long
-        get() = mCounter
+        get() = mCounter.get()
 
     fun inc() {
-        if (mCounter < Long.MAX_VALUE) mCounter++ else reset()
+        if (mCounter.get() < Long.MAX_VALUE) mCounter.incrementAndGet() else reset()
     }
 
     fun reset() {
-        mCounter = 1
+        mCounter.set(1)
     }
 
 }

@@ -74,4 +74,4 @@ jobs:
 
           git add .
           git commit -m "chore: Sync public SDK from internal repo [skip ci]" || echo "Nothing to commit"
-          git push public-wlt master
+          git push origin master

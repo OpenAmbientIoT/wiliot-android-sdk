@@ -14,41 +14,37 @@ import java.io.Serializable
 
 abstract class MQTTBaseData(
     open val payload: String?,
-    open val sequenceId: Long?,
     open val rssi: Int?,
     open val timestamp: Long = System.currentTimeMillis(),
 ) : Serializable {
-    init {
-        WiliotCounter.inc()
-    }
+
+    val sequenceId: Long = WiliotCounter.value.also { WiliotCounter.inc() }
+
 }
 
 // Wrapper for Bridge Config Packets, Heartbeats, Mel Packets
 data class PackedEdgeDataMQTT(
     override val payload: String?,
-    override val sequenceId: Long?,
     override val rssi: Int?,
     override val timestamp: Long = System.currentTimeMillis(),
     val aliasBridgeId: String?
-) : MQTTBaseData(payload, sequenceId, rssi, timestamp)
+) : MQTTBaseData(payload, rssi, timestamp)
 
 // Base wrapper for data+meta coupled (or not) packets
 abstract class PackedDataMQTT(
     override val payload: String?,
-    override val sequenceId: Long?,
     override val rssi: Int?,
     override val timestamp: Long = System.currentTimeMillis(),
-) : MQTTBaseData(payload, sequenceId, rssi, timestamp)
+) : MQTTBaseData(payload, rssi, timestamp)
 
 // Wrapper for regular data+meta (or data) packets
 class PackedDataMetaMQTT(
     override val payload: String?,
-    override val sequenceId: Long?,
     override val rssi: Int?,
     override val timestamp: Long = System.currentTimeMillis(),
     val aliasBridgeId: String? = null, // for mac addresses
     val retransmitted: Boolean
-) : PackedDataMQTT(payload, sequenceId, rssi, timestamp) {
+) : PackedDataMQTT(payload, rssi, timestamp) {
     companion object {
 
         private fun PacketData.isCombinedSiData(): Boolean = packet is CombinedSiPacket
@@ -60,7 +56,6 @@ class PackedDataMetaMQTT(
         fun fromPacketData(packetData: PacketData, counter: Long) = when {
             packetData.isCombinedSiData() -> PackedDataMetaMQTT(
                 payload = packetData.data,
-                sequenceId = counter,
                 rssi = packetData.rssi,
                 timestamp = packetData.timestamp,
                 aliasBridgeId = (packetData.packet as CombinedSiPacket).aliasBridgeId,
@@ -69,7 +64,6 @@ class PackedDataMetaMQTT(
 
             else -> if (packetData.isRetransmittedData() || packetData.isSensorData()) PackedDataMetaMQTT(
                 payload = packetData.data,
-                sequenceId = counter,
                 rssi = packetData.rssi,
                 timestamp = packetData.timestamp,
                 retransmitted = true // packetData.isRetransmittedData() || packetData.isSensorData()
@@ -82,7 +76,6 @@ class PackedDataMetaMQTT(
 
 data class PackedDataInternalSensorMQTT(
     override val timestamp: Long,
-    override val sequenceId: Long?,
     override val rssi: Int? = 0,
     override val payload: String?,
     val isSensor: Boolean = true,
@@ -91,7 +84,7 @@ data class PackedDataInternalSensorMQTT(
     val nfpkt: Int = 0,
     val sensorServiceId: String = "00000a",
     val sensorId: String
-) : PackedDataMQTT(payload, sequenceId, rssi, timestamp)
+) : PackedDataMQTT(payload, rssi, timestamp)
 
 //==============================================================================================
 // *** Utils ***
@@ -103,7 +96,6 @@ data class PackedDataInternalSensorMQTT(
 fun PrecisePosition.toMqttData(): PackedDataInternalSensorMQTT {
     return PackedDataInternalSensorMQTT(
         timestamp = detectionTimestamp,
-        sequenceId = WiliotCounter.value,
         payload = this.toHexPayload(),
         sensorId = Wiliot.getFullGWId()
     )
@@ -112,7 +104,6 @@ fun PrecisePosition.toMqttData(): PackedDataInternalSensorMQTT {
 fun BridgeHbPacketAbstract.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
         payload = value,
-        sequenceId = WiliotCounter.value,
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = aliasDeviceId().takeIf { this@toMqttData.apiVersion >= 9u }
@@ -122,7 +113,6 @@ fun BridgeHbPacketAbstract.toMqttData(): PackedEdgeDataMQTT {
 fun MelModulePacket.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
         payload = value,
-        sequenceId = WiliotCounter.value,
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = aliasDeviceId().takeIf { this@toMqttData.apiVersion >= 9u }
@@ -132,7 +122,6 @@ fun MelModulePacket.toMqttData(): PackedEdgeDataMQTT {
 fun BridgePacketAbstract.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
         payload = value,
-        sequenceId = WiliotCounter.value,
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = null

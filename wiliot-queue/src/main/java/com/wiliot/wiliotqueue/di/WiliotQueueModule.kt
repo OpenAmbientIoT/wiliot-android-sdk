@@ -1218,14 +1218,14 @@ class MessageQueueManager private constructor(
                 }
 
                 is AddUploadData -> {
-                    uploadQueue.addAll(msg.data)
+                    uploadQueue.addAll(msg.data.sortedBy { it.sequenceId })
                     msg.terminator?.let { terminators.add(it) }
                 }
 
                 is PushUploadQueue -> {
                     uploadQueue.toList().also {
                         uplinkNetScope.launch {
-                            uploadQueue(it)
+                            uploadQueue(it.sortedBy { it.sequenceId })
                         }
                     }
                     uploadQueue.clear()

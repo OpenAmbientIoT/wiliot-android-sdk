@@ -353,6 +353,9 @@ data class ScanResultInternal(
         var manufacturerSpecificData: SparseArray<ByteArray>? = null,
         val deviceName: String?
     ) : Parcelable {
+
+        var raw: String? = null
+
         constructor(parcel: Parcel) : this(
             null,
             null,

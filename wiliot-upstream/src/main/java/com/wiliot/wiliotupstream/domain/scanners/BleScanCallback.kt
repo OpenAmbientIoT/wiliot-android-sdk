@@ -12,9 +12,16 @@ import com.wiliot.wiliotcore.utils.ScanResultInternal
 import com.wiliot.wiliotcore.utils.helper.WiliotAppConfigurationSource
 import com.wiliot.wiliotcore.utils.toHexString
 import com.wiliot.wiliotupstream.domain.repository.BeaconDataRepository
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @ObsoleteCoroutinesApi
 @ExperimentalCoroutinesApi
@@ -65,6 +72,10 @@ internal object BleScanCallback : ScanCallback() {
                 this.scanRecord = ScanResultInternal.ScanRecord(
                     deviceName = this@toInternal.scanRecord?.deviceName
                 ).apply {
+                    if (this@toInternal.scanRecord != null) {
+                        val bytesString = this@toInternal.scanRecord?.bytes?.toHexString()
+                        this.raw = bytesString
+                    }
                     if (this@toInternal.scanRecord?.serviceData != null)
                         this.serviceData = this@toInternal.scanRecord?.serviceData?.toMap()
                     if ((this@toInternal.scanRecord?.manufacturerSpecificData?.size() ?: 0) > 0)
