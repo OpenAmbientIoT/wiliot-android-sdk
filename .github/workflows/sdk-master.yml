@@ -47,7 +47,7 @@ jobs:
 
       - name: Sync Public SDK (without rsync)
         env:
-          PUBLIC_REPO: https://${{ secrets.PUB_GITHUB_USERNAME }}:${{ secrets.PUBLIC_SDK_REPO_TOKEN }}@github.com/OpenAmbientIoT/wiliot-android-sdk.git
+          PUBLIC_REPO: https://x-access-token:${{ secrets.PUBLIC_SDK_REPO_TOKEN }}@github.com/OpenAmbientIoT/wiliot-android-sdk.git
         run: |
           echo "Preparing sync to Public SDK Repo..."
 
