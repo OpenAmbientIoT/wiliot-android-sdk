@@ -86,10 +86,6 @@ data class DownlinkConfigurationMessage(
         return gatewayConf.additional?.upstreamEnabled ?: default
     }
 
-    fun pacingPeriodMs(default: Long): Long {
-        return gatewayConf.additional?.pacerIntervalSeconds?.let { TimeUnit.SECONDS.toMillis(it) } ?: default
-    }
-
     fun isPixelsTrafficEnabled(default: Boolean): Boolean {
         return gatewayConf.additional?.pixelsTrafficEnabled ?: default
     }
@@ -119,6 +115,16 @@ data class DownlinkCustomBrokerMessage(
     val dataTopic: String
 ): DownlinkDomainMessage
 
+enum class GatewayAction(val serial: String) {
+    GET_GW_INFO("getGwInfo");
+
+    companion object {
+        fun fromSerial(serial: String): GatewayAction? {
+            return entries.firstOrNull { it.serial.equals(serial, ignoreCase = true) }
+        }
+    }
+}
+
 data class DownlinkActionMessage(
     // BASE MODEL
     val protocolVersion: Int,
@@ -140,6 +146,13 @@ data class DownlinkActionMessage(
 ) : DownlinkDomainMessage {
     val action: DownlinkAction
         get() {
+
+            fun Any?.isGatewayAction(): Boolean {
+                if (this == null || this !is String) return false
+                val actions = GatewayAction.entries.map { it.serial }
+                return actions.any { this.contains(it, ignoreCase = true) }
+            }
+
             return when (_action) {
                 is Number -> {
                     DownlinkAction.values().firstOrNull {
@@ -152,6 +165,8 @@ data class DownlinkActionMessage(
                     DownlinkAction.values().firstOrNull {
                         it.serial == realAction
                     } ?: DownlinkAction.UNKNOWN
+                } else if (_action.isGatewayAction()) {
+                    DownlinkAction.GET_GW_INFO
                 } else DownlinkAction.ADVERTISE
 
                 else -> DownlinkAction.UNKNOWN
@@ -209,6 +224,8 @@ enum class DownlinkAction(val serial: Int) {
         level = DeprecationLevel.ERROR
     )
     ENABLE_BLE_LOGS(-5),
+
+    GET_GW_INFO(-6),
 
     UNKNOWN(-1)
 }

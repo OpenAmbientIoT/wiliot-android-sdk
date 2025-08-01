@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
@@ -37,6 +38,7 @@ import com.wiliot.wiliotandroidsdk.di.ApplicationPermissionsDelegate
 import com.wiliot.wiliotandroidsdk.permissions.contract.ApplicationPermissionsContract
 import com.wiliot.wiliotandroidsdk.ui.theme.WiliotAndroidSDKTheme
 import com.wiliot.wiliotcore.Wiliot
+import com.wiliot.wiliotcore.config.VirtualBridgeConfig
 import com.wiliot.wiliotcore.health.WiliotHealth
 import com.wiliot.wiliotcore.utils.helper.start
 import com.wiliot.wiliotcore.utils.helper.stop
@@ -93,7 +95,8 @@ fun MainScreenUI(
                     .fillMaxWidth()
                     .wrapContentHeight()
                     .padding(horizontal = 16.dp),
-                vmState.wiliotHealth
+                vmState.wiliotHealth,
+                vmState.vBrgCfg
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -218,11 +221,14 @@ fun PermissionRequestDialog(
 @Composable
 private fun HealthCard(
     modifier: Modifier,
-    health: WiliotHealth
+    health: WiliotHealth,
+    vBrgCfg: VirtualBridgeConfig
 ) {
 
     val shape = RoundedCornerShape(16.dp)
     val elevation = 2.dp
+    val textSize = 10.sp
+    val lineHeight = 10.sp
 
     Surface(
         modifier = modifier
@@ -243,7 +249,8 @@ private fun HealthCard(
                     end.linkTo(parent.end, margin = 16.dp)
                     width = Dimension.fillToConstraints
                 },
-                text = "Health Monitor"
+                text = "Health Monitor",
+                fontSize = textSize
             )
 
             Column(
@@ -263,12 +270,16 @@ private fun HealthCard(
                 ) {
                     Text(
                         text = "Uptime:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
                         text = health.getUptime(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -279,12 +290,16 @@ private fun HealthCard(
                 ) {
                     Text(
                         text = "Uplink connected:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
-                        text = health.mqttClientConnected.toString()
+                        text = health.mqttClientConnected.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -295,12 +310,16 @@ private fun HealthCard(
                 ) {
                     Text(
                         text = "Uplink last delivery:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
-                        text = health.getLastUplinkSentTime()
+                        text = health.getLastUplinkSentTime(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -310,13 +329,17 @@ private fun HealthCard(
                         .wrapContentHeight()
                 ) {
                     Text(
-                        text = "Uplink last delivery timestamp:"
+                        text = "Uplink last delivery timestamp:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
-                        text = health.lastUplinkDataSentTime.toString()
+                        text = health.lastUplinkDataSentTime.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -326,13 +349,17 @@ private fun HealthCard(
                         .wrapContentHeight()
                 ) {
                     Text(
-                        text = "Phoenix (service) enabled:"
+                        text = "Phoenix (service) enabled:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
-                        text = Wiliot.configuration.phoenix.toString()
+                        text = Wiliot.configuration.phoenix.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -342,13 +369,17 @@ private fun HealthCard(
                         .wrapContentHeight()
                 ) {
                     Text(
-                        text = "Downlink msg counter:"
+                        text = "Downlink msg counter:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
                     )
                     Text(
-                        text = health.downlinkMessagesCounter.toString()
+                        text = health.downlinkMessagesCounter.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -358,7 +389,9 @@ private fun HealthCard(
                         .wrapContentHeight()
                 ) {
                     Text(
-                        text = "BT pkts last min:"
+                        text = "BT pkts last min:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
@@ -367,7 +400,9 @@ private fun HealthCard(
                         text = if (Wiliot.configuration.btPacketsCounterEnabled)
                             health.btPacketsLastMinute.toString()
                         else
-                            "DISABLED"
+                            "DISABLED",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 
@@ -377,7 +412,9 @@ private fun HealthCard(
                         .wrapContentHeight()
                 ) {
                     Text(
-                        text = "BT pkts last 10 min:"
+                        text = "BT pkts last 10 min:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp)
@@ -386,7 +423,129 @@ private fun HealthCard(
                         text = if (Wiliot.configuration.btPacketsCounterEnabled)
                             health.btPacketsLast10minutes.toString()
                         else
-                            "DISABLED"
+                            "DISABLED",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "Traffic Filter:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = health.trafficFilter?.name ?: "...",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "BLE addr:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = health.bleAddress ?: "N/A",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "vBrg pkt in:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = health.vBridgePktIn.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "vBrg pkt out:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = health.vBrgPktOut.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "vBrg MAC buffer:",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = health.vBridgeUniquePxMAC.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "vBrg pacing (ms):",
+                        fontSize = textSize,
+                        lineHeight = lineHeight
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    Text(
+                        text = vBrgCfg.pacingRate.toString(),
+                        fontSize = textSize,
+                        lineHeight = lineHeight
                     )
                 }
 

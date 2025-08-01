@@ -4,7 +4,7 @@ import com.wiliot.wiliotcore.FlowVersion
 import com.wiliot.wiliotcore.ServiceState
 import com.wiliot.wiliotcore.Wiliot
 import com.wiliot.wiliotcore.WiliotCounter
-import com.wiliot.wiliotcore.config.BrokerConfig
+import com.wiliot.wiliotcore.config.DynamicBrokerConfig
 import com.wiliot.wiliotcore.config.Configuration
 import com.wiliot.wiliotcore.contracts.CommandsQueueManagerContract
 import com.wiliot.wiliotcore.contracts.EdgeNetworkManagerContract
@@ -14,7 +14,6 @@ import com.wiliot.wiliotcore.contracts.WiliotDownstreamModule
 import com.wiliot.wiliotcore.contracts.WiliotEdgeModule
 import com.wiliot.wiliotcore.contracts.WiliotNetworkEdgeModule
 import com.wiliot.wiliotcore.contracts.WiliotNetworkMetaModule
-import com.wiliot.wiliotcore.contracts.WiliotPositioningModule
 import com.wiliot.wiliotcore.contracts.WiliotQueueModule
 import com.wiliot.wiliotcore.contracts.WiliotResolveDataModule
 import com.wiliot.wiliotcore.contracts.WiliotResolveEdgeModule
@@ -25,8 +24,9 @@ import com.wiliot.wiliotcore.contracts.wiring.EdgeNetworkManagerProvider
 import com.wiliot.wiliotcore.contracts.wiring.MessageQueueManagerProvider
 import com.wiliot.wiliotcore.contracts.wiring.MetaNetworkManagerProvider
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
+import com.wiliot.wiliotcore.model.DownlinkAction
 import com.wiliot.wiliotcore.model.DownlinkConfigurationMessage
 import com.wiliot.wiliotcore.model.DownlinkCustomBrokerMessage
 import com.wiliot.wiliotcore.utils.Reporter
@@ -50,13 +50,11 @@ object WiliotAppConfigurationSource {
         fun isUpstreamEnabled(): Boolean
         fun resolveEnabled(): Boolean
         fun isDownstreamEnabled(): Boolean
-        fun pacingPeriodMs(): Long // ms
         fun pixelsTrafficEnabled(): Boolean
         fun edgeTrafficEnabled(): Boolean
         fun excludeMqttTraffic(): Boolean
         fun isServicePhoenixEnabled(): Boolean
         fun isRunningInCloudManagedMode(): Boolean
-        fun isPrecisePositioningEnabled(): Boolean
         fun dataOutputTrafficFilter(): AdditionalGatewayConfig.DataOutputTrafficFilter
         fun btPacketsCounterEnabled(): Boolean
         fun isBleLogsEnabled(): Boolean
@@ -67,14 +65,12 @@ object WiliotAppConfigurationSource {
         override fun flowVersion(): FlowVersion = FlowVersion.m2m()
         override fun isUpstreamEnabled(): Boolean = true
         override fun isDownstreamEnabled(): Boolean = true
-        override fun pacingPeriodMs(): Long = Configuration.DEFAULT_PACING_PERIOD_MS
         override fun pixelsTrafficEnabled(): Boolean = true
         override fun edgeTrafficEnabled(): Boolean = true
-        override fun resolveEnabled(): Boolean = true
+        override fun resolveEnabled(): Boolean = false
         override fun excludeMqttTraffic(): Boolean = false
         override fun isServicePhoenixEnabled(): Boolean = false
         override fun isRunningInCloudManagedMode(): Boolean = true
-        override fun isPrecisePositioningEnabled(): Boolean = false
         override fun dataOutputTrafficFilter(): AdditionalGatewayConfig.DataOutputTrafficFilter = AdditionalGatewayConfig.DataOutputTrafficFilter.BRIDGES_AND_PIXELS
         override fun btPacketsCounterEnabled(): Boolean = false
         override fun isBleLogsEnabled(): Boolean = false
@@ -99,13 +95,11 @@ fun Wiliot.refreshConfiguration() {
             environment = WiliotAppConfigurationSource.configSource.environment(),
             ownerId = WiliotAppConfigurationSource.configSource.ownerId(),
             flowVersion = WiliotAppConfigurationSource.configSource.flowVersion(),
-            pacingPeriodMs = WiliotAppConfigurationSource.configSource.pacingPeriodMs(),
-            uploadConfigurationTraffic = WiliotAppConfigurationSource.configSource.edgeTrafficEnabled(),
-            uploadPixelsTraffic = WiliotAppConfigurationSource.configSource.pixelsTrafficEnabled(),
+            enableEdgeTraffic = WiliotAppConfigurationSource.configSource.edgeTrafficEnabled(),
+            enableDataTraffic = WiliotAppConfigurationSource.configSource.pixelsTrafficEnabled(),
             excludeMqttTraffic = WiliotAppConfigurationSource.configSource.excludeMqttTraffic(),
             phoenix = WiliotAppConfigurationSource.configSource.isServicePhoenixEnabled(),
             cloudManaged = WiliotAppConfigurationSource.configSource.isRunningInCloudManagedMode(),
-            precisePositioningEnabled = WiliotAppConfigurationSource.configSource.isPrecisePositioningEnabled(),
             dataOutputTrafficFilter = WiliotAppConfigurationSource.configSource.dataOutputTrafficFilter(),
             btPacketsCounterEnabled = WiliotAppConfigurationSource.configSource.btPacketsCounterEnabled()
         )
@@ -224,12 +218,6 @@ fun Wiliot.start() {
             else
                 null
         )
-        UpstreamModule?.setPrecisePositionSource(
-            if (WiliotAppConfigurationSource.configSource.isPrecisePositioningEnabled())
-                PositioningModule?.positioning
-            else
-                null
-        )
         UpstreamModule?.setupQueueProvider(QueueManagerProvider)
         UpstreamModule?.let {
             VirtualBridgeModule?.setUpstreamVirtualBridgeChannel(it.upstreamVirtualBridgeChannel)
@@ -239,9 +227,6 @@ fun Wiliot.start() {
         }
         VirtualBridgeModule?.start()
         UpstreamModule?.start()
-        if (WiliotAppConfigurationSource.configSource.isPrecisePositioningEnabled()) {
-            PositioningModule?.start()
-        }
     }
     if (WiliotAppConfigurationSource.configSource.isDownstreamEnabled()) {
         DownstreamModule?.setEdgeProcessor(EdgeModule?.processor)
@@ -266,7 +251,6 @@ fun Wiliot.start() {
 }
 
 fun Wiliot.stop() {
-    PositioningModule?.stop()
     VirtualBridgeModule?.stop()
     UpstreamModule?.stop()
     DownstreamModule?.stop()
@@ -308,9 +292,6 @@ private val ResolveDataModule: WiliotResolveDataModule?
 private val EdgeModule: WiliotEdgeModule?
     get() = Wiliot.modules.firstOrNull { it is WiliotEdgeModule } as? WiliotEdgeModule
 
-private val PositioningModule: WiliotPositioningModule?
-    get() = Wiliot.modules.firstOrNull { it is WiliotPositioningModule } as? WiliotPositioningModule
-
 private val VirtualBridgeModule: WiliotVirtualBridgeModule?
     get() = Wiliot.modules.firstOrNull { it is WiliotVirtualBridgeModule } as? WiliotVirtualBridgeModule
 
@@ -323,12 +304,26 @@ private val VirtualBridgeModule: WiliotVirtualBridgeModule?
 private val starterScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 fun Wiliot.handleBrokerConfigurationChangeRequest(newConfiguration: DownlinkCustomBrokerMessage) {
-    brokerConfig = if (newConfiguration.customBroker) {
-        BrokerConfig(newConfiguration)
+    dynamicBrokerConfig = if (newConfiguration.customBroker) {
+        DynamicBrokerConfig(newConfiguration)
     } else {
-        BrokerConfig(null)
+        DynamicBrokerConfig(null)
     }
     restartWiliot()
+}
+
+fun Wiliot.handleDownlinkActionGatewayMessage(actionMessage: DownlinkAction) {
+
+    Reporter.log("handleDownlinkActionGatewayMessage: gwAction: ${actionMessage.name}", logTag())
+
+    when (actionMessage) {
+        DownlinkAction.GET_GW_INFO -> {
+            QueueModule?.sendCapabilitiesAndHeartbeat()
+        }
+        else -> {
+            Reporter.log("handleDownlinkActionGatewayMessage: gwAction: $actionMessage is not supported", logTag())
+        }
+    }
 }
 
 fun Wiliot.handleSdkConfigurationChangeRequest(newConfiguration: DownlinkConfigurationMessage) {
@@ -337,19 +332,18 @@ fun Wiliot.handleSdkConfigurationChangeRequest(newConfiguration: DownlinkConfigu
     val prevOwnerId = WiliotAppConfigurationSource.configSource.ownerId()
     val prevFlowVersion = WiliotAppConfigurationSource.configSource.flowVersion()
     val prevUpstreamEnabled = WiliotAppConfigurationSource.configSource.isUpstreamEnabled()
-    val prevPacingPeriod = WiliotAppConfigurationSource.configSource.pacingPeriodMs()
     val prevPixelsTrafficEnabled = WiliotAppConfigurationSource.configSource.pixelsTrafficEnabled()
     val prevEdgeTrafficEnabled = WiliotAppConfigurationSource.configSource.edgeTrafficEnabled()
     val prevResolveEnabled = WiliotAppConfigurationSource.configSource.resolveEnabled()
     val prevServicePhoenixEnabled = WiliotAppConfigurationSource.configSource.isServicePhoenixEnabled()
     val prevRunningInCloudManagedMode = WiliotAppConfigurationSource.configSource.isRunningInCloudManagedMode()
-    val prevPrecisePositioningEnabled = WiliotAppConfigurationSource.configSource.isPrecisePositioningEnabled()
     val prevDataOutputTrafficFilter = WiliotAppConfigurationSource.configSource.dataOutputTrafficFilter()
     val prevBtPacketsCounterEnabled = WiliotAppConfigurationSource.configSource.btPacketsCounterEnabled()
     val prevBleLogsEnabled = WiliotAppConfigurationSource.configSource.isBleLogsEnabled()
 
     if (newConfiguration.hasChanges(WiliotAppConfigurationSource.configSource).not()) {
         Reporter.log("There is no changes in received Configuration message", logTag())
+        QueueModule?.sendCapabilitiesAndHeartbeat()
         return
     }
 
@@ -359,14 +353,12 @@ fun Wiliot.handleSdkConfigurationChangeRequest(newConfiguration: DownlinkConfigu
         override fun flowVersion(): FlowVersion = prevFlowVersion
         override fun isUpstreamEnabled(): Boolean = newConfiguration.isUpstreamEnabled(prevUpstreamEnabled)
         override fun isDownstreamEnabled(): Boolean = true
-        override fun pacingPeriodMs(): Long = newConfiguration.pacingPeriodMs(prevPacingPeriod)
         override fun pixelsTrafficEnabled(): Boolean = newConfiguration.isPixelsTrafficEnabled(prevPixelsTrafficEnabled)
         override fun edgeTrafficEnabled(): Boolean = newConfiguration.isEdgeTrafficEnabled(prevEdgeTrafficEnabled)
         override fun resolveEnabled(): Boolean = prevResolveEnabled
         override fun excludeMqttTraffic(): Boolean = false
         override fun isServicePhoenixEnabled(): Boolean = prevServicePhoenixEnabled
         override fun isRunningInCloudManagedMode(): Boolean = prevRunningInCloudManagedMode
-        override fun isPrecisePositioningEnabled(): Boolean = prevPrecisePositioningEnabled
         override fun dataOutputTrafficFilter(): AdditionalGatewayConfig.DataOutputTrafficFilter = newConfiguration.dataOutputTrafficFilter(prevDataOutputTrafficFilter)
         override fun btPacketsCounterEnabled(): Boolean = prevBtPacketsCounterEnabled
         override fun isBleLogsEnabled(): Boolean = newConfiguration.isBleLogsEnabled(prevBleLogsEnabled)
@@ -381,7 +373,6 @@ fun Wiliot.handleSdkConfigurationChangeRequest(newConfiguration: DownlinkConfigu
 @Suppress("RedundantIf")
 private fun DownlinkConfigurationMessage.hasChanges(configSource: WiliotAppConfigurationSource.WiliotSdkPreferenceSource): Boolean {
     if (isUpstreamEnabled(configSource.isUpstreamEnabled()) != configSource.isUpstreamEnabled()) return true
-    if (pacingPeriodMs(configSource.pacingPeriodMs()) != configSource.pacingPeriodMs()) return true
     if (isPixelsTrafficEnabled(configSource.pixelsTrafficEnabled()) != configSource.pixelsTrafficEnabled()) return true
     if (isEdgeTrafficEnabled(configSource.edgeTrafficEnabled()) != configSource.edgeTrafficEnabled()) return true
     if (isBleLogsEnabled(configSource.isBleLogsEnabled()) != configSource.isBleLogsEnabled()) return true

@@ -1,11 +1,13 @@
 package com.wiliot.wiliotvirtualbridge.repository
 
 import com.wiliot.wiliotcore.Wiliot
+import com.wiliot.wiliotcore.health.WiliotHealthMonitor
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.DataPacket
 import com.wiliot.wiliotcore.model.DataPacketType
 import com.wiliot.wiliotcore.model.Packet
 import com.wiliot.wiliotcore.utils.Reporter
+import com.wiliot.wiliotcore.utils.bitMask
 import com.wiliot.wiliotcore.utils.every
 import com.wiliot.wiliotcore.utils.logTag
 import com.wiliot.wiliotvirtualbridge.BuildConfig
@@ -112,9 +114,10 @@ fun CoroutineScope.vBridgeRepoActor() = actor<VBridgeRepoMsg> {
             filteredEntries.map {
                 it.value.toEchoPacket()
             }.let {
-                VirtualBridgeDataRepository::upstreamPackets
+                VirtualBridgeDataRepository.upstreamPackets(it)
                 sentPacketsCounter += it.size
                 incSequenceId(it.size)
+                WiliotHealthMonitor.updateVirtualBridgePktOut(it.size)
             }
 
             // reset entries
@@ -127,7 +130,14 @@ fun CoroutineScope.vBridgeRepoActor() = actor<VBridgeRepoMsg> {
         // remove dead entries
         packetsBuffer.filter(deadPredicate).keys.forEach(packetsBuffer::remove)
 
-        if (BuildConfig.DEBUG) Reporter.log("PACER. Map size after pacing: ${packetsBuffer.size}", logTag)
+        WiliotHealthMonitor.updateVirtualBridgeUniquePxMAC(packetsBuffer.size)
+
+        if (BuildConfig.DEBUG) Reporter.log(
+            "PACER. Map size after pacing: ${packetsBuffer.size}; " +
+                    "Pacer Interval: ${VConfig.config.pacingRate} ms; " +
+                    "Alive entries: ${packetsBuffer.filter { it.value.lastPacket != null }.size}",
+            logTag
+        )
     }
 
     fun performIncome(msg: Income) {
@@ -148,9 +158,12 @@ fun CoroutineScope.vBridgeRepoActor() = actor<VBridgeRepoMsg> {
             ).let {
                 // 0 sending (without pacing)
                 VirtualBridgeDataRepository.upstreamPackets(listOf(it.toEchoPacket()))
-                packetsBuffer[macKey] = it
+                WiliotHealthMonitor.updateVirtualBridgePktOut(1)
+                packetsBuffer[macKey] = it.copy(lastPacket = null) // to avoid sending it again
             }
         }
+        WiliotHealthMonitor.updateVirtualBridgePktIn(1)
+        WiliotHealthMonitor.updateVirtualBridgeUniquePxMAC(packetsBuffer.size)
         receivedTagsCounter++
     }
 
@@ -347,8 +360,17 @@ internal object VirtualBridgeDataRepository {
         Reporter.log("processIncomingMelPacket($packet)", logTag)
         if (packet.isActionGetModule) {
             Reporter.log("processIncomingMelPacket($packet) -> ActionGetModule", logTag)
-            repoScope.launch {
-                repoActor.send(VBridgeRepoMsg.Configuration)
+            if (packet.containsGetInterface) {
+                Reporter.log("processIncomingMelPacket($packet) -> Get_Interface", logTag)
+                repoScope.launch {
+                    repoActor.send(VBridgeRepoMsg.Interface)
+                }
+            }
+            if (packet.containsGetDatapath) {
+                Reporter.log("processIncomingMelPacket($packet) -> Get_Datapath", logTag)
+                repoScope.launch {
+                    repoActor.send(VBridgeRepoMsg.Configuration)
+                }
             }
             return
         }
@@ -397,11 +419,35 @@ internal object VirtualBridgeDataRepository {
 
     // region [Utils]
 
+    private fun String.normalizeActionGetModule(): String {
+        return this.uppercase().let {
+            if (it.startsWith("1E16C6FC")) {
+                it.replaceFirst("1E16C6FC", "")
+            } else {
+                it
+            }
+        }
+    }
+
     private val String.isActionGetModule: Boolean
         get() {
-            val origin = this.uppercase()
+            val origin = this.normalizeActionGetModule()
             val predicate = "${generateMacFromString(Wiliot.getFullGWId()).replace(":", "")}03".uppercase()
             return origin.contains(predicate)
+        }
+
+    private val String.containsGetInterface: Boolean
+        get() {
+            val origin = this.uppercase()
+            if (origin.isActionGetModule.not()) return false
+            return (origin.substring(26..27).toUInt(16) and bitMask(10000000) shr 7) == 1u
+        }
+
+    private val String.containsGetDatapath: Boolean
+        get() {
+            val origin = this.uppercase()
+            if (origin.isActionGetModule.not()) return false
+            return (origin.substring(32..33).toUInt(16) and bitMask(1000000) shr 6) == 1u
         }
 
     private val String.isConfigurationPacket: Boolean

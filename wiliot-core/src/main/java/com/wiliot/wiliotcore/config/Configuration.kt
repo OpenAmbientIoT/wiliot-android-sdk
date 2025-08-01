@@ -1,7 +1,8 @@
 package com.wiliot.wiliotcore.config
 
 import com.wiliot.wiliotcore.FlowVersion
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.Environments
 import com.wiliot.wiliotcore.model.AdditionalGatewayConfig.DataOutputTrafficFilter
 import java.util.concurrent.TimeUnit
 
@@ -18,10 +19,19 @@ data class Configuration(
      * before running SDK, otherwise it will cause an error. Should be of values [FlowVersion.V1] or
      * [FlowVersion.V2]. In most cases it could be hardcoded to [FlowVersion.V2]
      */
-    val flowVersion: FlowVersion = FlowVersion.INVALID,
+    @Deprecated(
+        "FlowVersion.V1 is deprecated and will be removed in future releases along with [flowVersion] config field.",
+        ReplaceWith("FlowVersion.V2"),
+        DeprecationLevel.WARNING
+    )
+    val flowVersion: FlowVersion = FlowVersion.V2,
     /**
-     * Environment to perform in. For regular use-case should be [EnvironmentWiliot.PROD_AWS] or
-     * [EnvironmentWiliot.PROD_GCP]
+     * Environment of current session. Required to run SDK.
+     * Default value is [Environments.WILIOT_PROD_AWS]
+     *
+     * To configure SDK for different environments, you can use [Environments] enum.
+     *
+     * To configure custom environment, you can use [Environments.addCustomEnvironment].
      */
     val environment: EnvironmentWiliot = DEFAULT_ENVIRONMENT,
 
@@ -43,7 +53,6 @@ data class Configuration(
      * Default value is 'true', and you shouldn't disable it without good reason (TEST/DEBUG purposes)
      */
     val cloudManaged: Boolean = true,
-    val precisePositioningEnabled: Boolean = false,
 
     // SDK config
     /**
@@ -53,18 +62,16 @@ data class Configuration(
      */
     val isBleAdvertisementEnabled: Boolean = true,
     /**
-     * Pacing period in milliseconds
+     * Flag that enables/disables uploading data/meta/sensor packets to the Cloud.
+     * Setting it to 'false' will disable all data transmission to the Cloud for both:
+     * Direct Pixel Packets and Retransmission by Bridges Pixel Packets, and also for sensors.
      */
-    val pacingPeriodMs: Long = DEFAULT_PACING_PERIOD_MS,
-    /**
-     * Flag that enables/disables uploading Pixels data/meta packets to the Cloud.
-     */
-    val uploadPixelsTraffic: Boolean = true,
+    val enableDataTraffic: Boolean = true,
     /**
      * Flag that enables/disables uploading Edge devices packets to the Cloud
-     * (like Bridge configurations, heartbeats etc).
+     * (like Bridge configurations, heartbeats, interface packets, module packets etc).
      */
-    val uploadConfigurationTraffic: Boolean = true,
+    val enableEdgeTraffic: Boolean = true,
     /**
      * Flag that enables/disables MQTT data transmission.
      * If it set to 'true' no data will be delivered to the Cloud.
@@ -82,12 +89,9 @@ data class Configuration(
 ) {
 
     companion object {
-        val DEFAULT_ENVIRONMENT = EnvironmentWiliot.PROD_AWS
-        const val DEFAULT_PACING_PERIOD_MS: Long = 10_000 // ms
+        val DEFAULT_ENVIRONMENT = Environments.WILIOT_PROD_AWS
 
         const val SDK_GATEWAY_TYPE = "android"
-
-        const val DEFAULT_BRIDGE_PRESENCE_TIMEOUT_MS: Long = 120_000 // 2 min
     }
 
     /**
@@ -104,9 +108,8 @@ data class Configuration(
                 "flowVersion=$flowVersion, " +
                 "environment=$environment, " +
                 "isBleAdvertisementEnabled=$isBleAdvertisementEnabled, " +
-                "pacingPeriod=$pacingPeriodMs, " +
-                "uploadPixelsTraffic=$uploadPixelsTraffic, " +
-                "uploadConfigurationTraffic=$uploadConfigurationTraffic, " +
+                "uploadPixelsTraffic=$enableDataTraffic, " +
+                "uploadConfigurationTraffic=$enableEdgeTraffic, " +
                 "dataOutputTrafficFilter=$dataOutputTrafficFilter" +
                 ")"
     }

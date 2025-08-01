@@ -4,9 +4,10 @@ import android.app.Application
 import android.util.Log
 import com.google.gson.Gson
 import com.wiliot.wiliotcore.Wiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.Environments
 import com.wiliot.wiliotcore.getWithApplicationContext
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.ResettableLazy
 import com.wiliot.wiliotcore.utils.logTag
@@ -22,43 +23,52 @@ import java.lang.ref.WeakReference
 
 internal class MqttProvider(
     private val prodAwsClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideProdAwsMQTTClient(),
-    private val prodGcpClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideProdGcpMQTTClient(),
-    private val testAwsClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideTestAwsMQTTClient(),
-    private val testGcpClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideTestGcpMQTTClient(),
-    private val devAwsClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideDevAwsMQTTClient(),
-    private val devGcpClient: Lazy<MqttAndroidClient> = WiliotMqttClientsModule.provideDevGcpMQTTClient(),
+    private val customDynamicClient: ResettableLazy<MqttAndroidClient> = WiliotMqttClientsModule.provideCustomDynamicMQTTClient(),
     private val customClient: ResettableLazy<MqttAndroidClient> = WiliotMqttClientsModule.provideCustomMQTTClient()
 ) : MqttClientProviderContract {
 
     private val logTag = logTag()
 
-    private var customClientInitialized = false
+    private var customDynamicClientInitialized = false
+
+    private var lastCustomEnvironment: String? = null
+
+    private val predefinedEnvironmentNames = listOf(
+        Environments.WILIOT_PROD_AWS
+    ).map { it.envName }
 
     override fun getForEnvironment(environment: String): MqttAndroidClient {
-        if (Wiliot.brokerConfig.isCustomBroker) {
+        if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker) {
             Reporter.log("QUEUE CONFIGURED TO USE CUSTOM BROKER!", logTag, highlightError = true)
-            return customClient.value.also {
-                customClientInitialized = true
+            return customDynamicClient.value.also {
+                customDynamicClientInitialized = true
             }
         } else {
-            if (customClientInitialized) {
-                WiliotMqttClientsModule.resetCustomMqttClient()
-                customClient.reset().also {
-                    customClientInitialized = false
+            // if not using custom dynamic broker anymore, reset the custom dynamic client if it was initialized
+            if (customDynamicClientInitialized) {
+                WiliotMqttClientsModule.resetCustomDynamicMqttClient()
+                customDynamicClient.reset().also {
+                    customDynamicClientInitialized = false
                 }
             }
         }
-        return EnvironmentWiliot.entries.first {
-            it.value == environment
+
+        // If requested environment is not one of the predefined environments,
+        // need to check if there is a need to reset outdated custom client
+        if (environment !in predefinedEnvironmentNames) {
+            if (environment != lastCustomEnvironment) {
+                WiliotMqttClientsModule.resetCustomEnvironmentMqttClient()
+                lastCustomEnvironment = environment
+            }
+        }
+
+        return Environments.set.first {
+            it.envName == environment
         }.let { env ->
             Reporter.log("getForEnvironment -> $env", logTag)
             when (env) {
-                EnvironmentWiliot.PROD_AWS -> prodAwsClient.value
-                EnvironmentWiliot.PROD_GCP -> prodGcpClient.value
-                EnvironmentWiliot.TEST_AWS -> testAwsClient.value
-                EnvironmentWiliot.TEST_GCP -> testGcpClient.value
-                EnvironmentWiliot.DEV_AWS -> devAwsClient.value
-                EnvironmentWiliot.DEV_GCP -> devGcpClient.value
+                Environments.WILIOT_PROD_AWS -> prodAwsClient.value
+                else -> customClient.value
             }
         }
     }
@@ -82,12 +92,10 @@ fun mqttProvider() = WiliotMqtt.provideMqttClientProviderContract()
 private object WiliotMqttClientsModule {
 
     private var mqttClientProdAws: Lazy<MqttAndroidClient>? = null
-    private var mqttClientProdGcp: Lazy<MqttAndroidClient>? = null
-    private var mqttClientTestAws: Lazy<MqttAndroidClient>? = null
-    private var mqttClientTestGcp: Lazy<MqttAndroidClient>? = null
-    private var mqttClientDevAws: Lazy<MqttAndroidClient>? = null
-    private var mqttClientDevGcp: Lazy<MqttAndroidClient>? = null
+    private var mqttClientCustomDynamic: ResettableLazy<MqttAndroidClient>? = null
     private var mqttClientCustom: ResettableLazy<MqttAndroidClient>? = null
+
+    private var lastCustomEnvironment: String? = null
 
     private const val logTag = "MQTT"
 
@@ -170,7 +178,7 @@ private object WiliotMqttClientsModule {
 
                 if (clientConnected) {
                     val topic =
-                        "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$cntOwner/$gwId"
+                        "status/$cntOwner/$gwId"
 
                     try {
                         val jsonPayload =
@@ -228,26 +236,26 @@ private object WiliotMqttClientsModule {
         return mqttClientProdAws!!
     }
 
-    fun provideProdGcpMQTTClient(
+    fun provideCustomDynamicMQTTClient(
         app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
         gatewayId: String = Wiliot.getFullGWId(),
         callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientProdGcp == null) {
-            mqttClientProdGcp = lazy {
+    ): ResettableLazy<MqttAndroidClient> {
+        if (mqttClientCustomDynamic == null) {
+            mqttClientCustomDynamic = resettableLazy {
                 MqttAndroidClient(
                     app,
-                    BuildConfig.PROD_GCP_MQTT_URL,
+                    Wiliot.dynamicBrokerConfig.broker,
                     gatewayId
                 ).apply {
                     setCallback(
                         callback.also {
-                            it.setDebugData("ProdGcpMqttClient")
+                            it.setDebugData("CustomDynamicMqttClient")
                             it.setupClient(
                                 client = this,
                                 gatewayId = gatewayId,
                                 currentOwnerId = {
-                                    Wiliot.configuration.ownerId
+                                    Wiliot.dynamicBrokerConfig.ownerId
                                 }
                             )
                         }
@@ -255,160 +263,57 @@ private object WiliotMqttClientsModule {
                 }
             }
         }
-        return mqttClientProdGcp!!
-    }
-
-    fun provideTestAwsMQTTClient(
-        app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
-        gatewayId: String = Wiliot.getFullGWId(),
-        callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientTestAws == null) {
-            mqttClientTestAws = lazy {
-                MqttAndroidClient(
-                    app,
-                    BuildConfig.TEST_AWS_MQTT_URL,
-                    gatewayId
-                ).apply {
-                    setCallback(
-                        callback.also {
-                            it.setDebugData("TestAwsMqttClient")
-                            it.setupClient(
-                                client = this,
-                                gatewayId = gatewayId,
-                                currentOwnerId = {
-                                    Wiliot.configuration.ownerId
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-        }
-        return mqttClientTestAws!!
-    }
-
-    fun provideTestGcpMQTTClient(
-        app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
-        gatewayId: String = Wiliot.getFullGWId(),
-        callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientTestGcp == null) {
-            mqttClientTestGcp = lazy {
-                MqttAndroidClient(
-                    app,
-                    BuildConfig.TEST_GCP_MQTT_URL,
-                    gatewayId
-                ).apply {
-                    setCallback(
-                        callback.also {
-                            it.setDebugData("TestGcpMqttClient")
-                            it.setupClient(
-                                client = this,
-                                gatewayId = gatewayId,
-                                currentOwnerId = {
-                                    Wiliot.configuration.ownerId
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-        }
-        return mqttClientTestGcp!!
-    }
-
-    fun provideDevAwsMQTTClient(
-        app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
-        gatewayId: String = Wiliot.getFullGWId(),
-        callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientDevAws == null) {
-            mqttClientDevAws = lazy {
-                MqttAndroidClient(
-                    app,
-                    BuildConfig.DEV_AWS_MQTT_URL,
-                    gatewayId
-                ).apply {
-                    setCallback(
-                        callback.also {
-                            it.setDebugData("DevAwsMqttClient")
-                            it.setupClient(
-                                client = this,
-                                gatewayId = gatewayId,
-                                currentOwnerId = {
-                                    Wiliot.configuration.ownerId
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-        }
-        return mqttClientDevAws!!
-    }
-
-    fun provideDevGcpMQTTClient(
-        app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
-        gatewayId: String = Wiliot.getFullGWId(),
-        callback: ExtendedMqttCallback = provideMqttCallback(),
-    ): Lazy<MqttAndroidClient> {
-        if (mqttClientDevGcp == null) {
-            mqttClientDevGcp = lazy {
-                MqttAndroidClient(
-                    app,
-                    BuildConfig.DEV_GCP_MQTT_URL,
-                    gatewayId
-                ).apply {
-                    setCallback(
-                        callback.also {
-                            it.setDebugData("DevGcpMqttClient")
-                            it.setupClient(
-                                client = this,
-                                gatewayId = gatewayId,
-                                currentOwnerId = {
-                                    Wiliot.configuration.ownerId
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-        }
-        return mqttClientDevGcp!!
+        return mqttClientCustomDynamic!!
     }
 
     fun provideCustomMQTTClient(
         app: Application = getWithApplicationContext { this.applicationContext as Application }!!,
         gatewayId: String = Wiliot.getFullGWId(),
         callback: ExtendedMqttCallback = provideMqttCallback(),
+        environment: EnvironmentWiliot = Wiliot.configuration.environment
     ): ResettableLazy<MqttAndroidClient> {
         if (mqttClientCustom == null) {
             mqttClientCustom = resettableLazy {
                 MqttAndroidClient(
                     app,
-                    Wiliot.brokerConfig.broker,
+                    environment.mqttUrl,
                     gatewayId
                 ).apply {
                     setCallback(
                         callback.also {
-                            it.setDebugData("CustomMqttClient")
+                            it.setDebugData("CustomMqttClient_${environment.envName}")
                             it.setupClient(
                                 client = this,
                                 gatewayId = gatewayId,
                                 currentOwnerId = {
-                                    Wiliot.brokerConfig.ownerId
+                                    Wiliot.configuration.ownerId
                                 }
                             )
                         }
                     )
                 }
             }
+        } else {
+            // If the custom client is already initialized, we need to check integrity
+            if (lastCustomEnvironment != environment.envName) {
+                throw IllegalStateException(
+                    "Custom MQTT client already initialized for environment ${lastCustomEnvironment}. " +
+                            "If you seeing this exception, it means domain logic of Wiliot SDK is broken " +
+                            "by unauthorized interference (e.g. using reflection). If you think this is a bug, " +
+                            "please report it to Wiliot support team " +
+                            "support@wiliot.com"
+                )
+            }
         }
         return mqttClientCustom!!
     }
 
-    fun resetCustomMqttClient() {
+    fun resetCustomDynamicMqttClient() {
+        mqttClientCustomDynamic?.reset()
+        mqttClientCustomDynamic = null
+    }
+
+    fun resetCustomEnvironmentMqttClient() {
         mqttClientCustom?.reset()
         mqttClientCustom = null
     }

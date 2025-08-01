@@ -1,8 +1,7 @@
 package com.wiliot.wiliotqueue.utils
 
 import com.google.gson.*
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
-import com.wiliot.wiliotqueue.BuildConfig
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotqueue.mqtt.model.*
 import okhttp3.Request
 import java.lang.reflect.Type
@@ -32,8 +31,15 @@ internal class NullableUIntJson : JsonSerializer<UInt?>, JsonDeserializer<UInt?>
     }
 }
 
-internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>,
-    JsonDeserializer<MQTTBaseData> {
+internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>, JsonDeserializer<MQTTBaseData> {
+
+    private fun String?.wrapWithBlePrefix(): String? {
+        return if (this.isNullOrBlank().not() && this?.startsWith("1E16", ignoreCase = true) == false) {
+            "1E16$this"
+        } else {
+            this
+        }
+    }
 
     override fun serialize(
         src: MQTTBaseData?,
@@ -41,7 +47,7 @@ internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>,
         context: JsonSerializationContext?,
     ): JsonElement {
         val jsonObject = JsonObject()
-        jsonObject.addProperty("payload", src?.payload?.uppercase())
+        jsonObject.addProperty("payload", src?.payload?.uppercase().wrapWithBlePrefix())
         jsonObject.addProperty("sequenceId", src?.sequenceId)
         jsonObject.addProperty("rssi", src?.rssi)
         jsonObject.addProperty("timestamp", src?.timestamp)
@@ -110,12 +116,5 @@ internal fun Request.signedRequest(token: String?): Request {
 }
 
 internal fun EnvironmentWiliot.coreApiBase(): String {
-    return when (this) {
-        EnvironmentWiliot.PROD_AWS -> BuildConfig.PROD_AWS_API_BASE
-        EnvironmentWiliot.PROD_GCP -> BuildConfig.PROD_GCP_API_BASE
-        EnvironmentWiliot.TEST_AWS -> BuildConfig.TEST_AWS_API_BASE
-        EnvironmentWiliot.TEST_GCP -> BuildConfig.TEST_GCP_API_BASE
-        EnvironmentWiliot.DEV_AWS -> BuildConfig.DEV_AWS_API_BASE
-        EnvironmentWiliot.DEV_GCP -> BuildConfig.DEV_GCP_API_BASE
-    }
+    return apiBaseUrl
 }

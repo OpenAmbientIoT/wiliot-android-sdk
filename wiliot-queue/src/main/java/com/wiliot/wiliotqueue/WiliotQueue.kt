@@ -6,7 +6,7 @@ import com.wiliot.wiliotcore.contracts.CommandsQueueManagerContract
 import com.wiliot.wiliotcore.contracts.MessageQueueManagerContract
 import com.wiliot.wiliotcore.contracts.WiliotQueueModule
 import com.wiliot.wiliotcore.embedded.auth.PrimaryTokenInjectionConsumer
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotcore.registerModule
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.logTag
@@ -69,6 +69,15 @@ object WiliotQueue : PrimaryTokenInjectionConsumer, WiliotQueueModule {
         configuration = configuration.copy(
             sendLogs = enabled
         )
+    }
+
+    override fun sendCapabilitiesAndHeartbeat() {
+        if (initialized.not()) {
+            Reporter.log("sendCapabilitiesAndHeartbeat -> UNABLE TO SEND. WiliotQueue is not ready", logTag)
+            return
+        }
+        msgQueueManager().publishCapabilities()
+        msgQueueManager().publishGatewayHeartbeat()
     }
 
 }

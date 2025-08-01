@@ -14,7 +14,8 @@ import com.wiliot.wiliotcore.WiliotCounter
 import com.wiliot.wiliotcore.contracts.CommandsQueueManagerContract
 import com.wiliot.wiliotcore.contracts.MessageQueueManagerContract
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.Environments
 import com.wiliot.wiliotcore.model.*
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.asJWT
@@ -146,8 +147,7 @@ class MessageQueueManager private constructor(
     // region [Contract]
 
     override fun publishPayload(
-        payload: MutableSet<BasePacketData>,
-        environmentWiliot: EnvironmentWiliot,
+        payload: MutableSet<BasePacketData>
     ) {
         enqueuePublishBeaconsDataMQTT(payload)
     }
@@ -161,6 +161,10 @@ class MessageQueueManager private constructor(
 
     override fun publishCapabilities() {
         publishCapabilitiesData()
+    }
+
+    override fun publishGatewayHeartbeat() {
+        publishGatewayHeartbeatData()
     }
 
     override fun publishBridgeStatus(
@@ -177,26 +181,13 @@ class MessageQueueManager private constructor(
         enqueuePublishBridgeHeartbeat(payload)
     }
 
-    override fun publishPrecisePosition(
-        payload: PrecisePosition,
-        environmentWiliot: EnvironmentWiliot
-    ) {
-        enqueuePublishPrecisePosition(payload)
-    }
-
     override suspend fun publishPacketLog(
         payload: List<Any>,
         environmentWiliot: EnvironmentWiliot,
     ) {
         try {
-            val isProd = when (environmentWiliot) {
-                EnvironmentWiliot.PROD_AWS -> true
-                EnvironmentWiliot.PROD_GCP -> true
-                else -> false
-            }
             publishPacketLogDataMQTT(
                 payload,
-                isProd,
                 pickMqttClient(environmentWiliot)
             )
         } catch (e: IOException) {
@@ -206,14 +197,8 @@ class MessageQueueManager private constructor(
 
     override suspend fun publishMelAck(payload: Ack, environmentWiliot: EnvironmentWiliot) {
         try {
-            val isProd = when (environmentWiliot) {
-                EnvironmentWiliot.PROD_AWS -> true
-                EnvironmentWiliot.PROD_GCP -> true
-                else -> false
-            }
             publishMelAckMQTT(
                 payload,
-                isProd,
                 pickMqttClient(environmentWiliot)
             )
         } catch (e: IOException) {
@@ -226,14 +211,8 @@ class MessageQueueManager private constructor(
         environmentWiliot: EnvironmentWiliot,
     ) {
         try {
-            val isProd = when (environmentWiliot) {
-                EnvironmentWiliot.PROD_AWS -> true
-                EnvironmentWiliot.PROD_GCP -> true
-                else -> false
-            }
             publishBridgeAckDataMQTT(
                 payload,
-                isProd,
                 pickMqttClient(environmentWiliot)
             )
         } catch (e: IOException) {
@@ -274,9 +253,9 @@ class MessageQueueManager private constructor(
             uploadScope.cancel()
         }
         val processedClients: MutableSet<Int> = mutableSetOf()
-        EnvironmentWiliot.entries.forEach { env ->
+        Environments.set.forEach { env ->
             mqttClientProvider.getForEnvironment(
-                env.value
+                env.envName
             ).let { client ->
                 if (client.hashCode() !in processedClients) {
                     processedClients.add(client.hashCode())
@@ -299,14 +278,14 @@ class MessageQueueManager private constructor(
     override val mqttConnectionHash: StateFlow<String?>
         get() = connectionHash
 
-    override fun subscribeOnDownlink(environmentWiliot: EnvironmentWiliot): StateFlow<DownlinkMessage?> {
+    override fun subscribeOnDownlink(): StateFlow<DownlinkMessage?> {
         Reporter.log("subscribeOnDownlink", logTag)
         downlinkNetJob?.runCatching { cancel() }
         downlinkNetJob = downlinkNetScope.launch {
             subscribeDownlinkCommands(
                 onFailedToConnect = {
                     Reporter.log("subscribeOnDownlink -> Failed to connect", logTag)
-                    subscribeOnDownlink(environmentWiliot)
+                    subscribeOnDownlink()
                 }
             ) {
                 mDownlinkCommand.value = it
@@ -391,6 +370,12 @@ class MessageQueueManager private constructor(
         }
     }
 
+    private fun sendSendGatewayHeartbeat() {
+        uploadScope.launch {
+            uploadActor?.send(DownlinkHeartbeat)
+        }
+    }
+
     private fun sendAddToQueue(data: List<MQTTBaseData>, terminator: (() -> Unit)? = null) {
         uploadScope.launch {
             uploadActor?.send(AddUploadData(data, terminator))
@@ -406,7 +391,7 @@ class MessageQueueManager private constructor(
     private fun pickMqttClient(
         environmentWiliot: EnvironmentWiliot = Wiliot.configuration.environment,
     ): MqttAndroidClient {
-        return mqttClientProvider.getForEnvironment(environmentWiliot.value)
+        return mqttClientProvider.getForEnvironment(environmentWiliot.envName)
     }
 
     private fun enqueuePublishBridgeHeartbeat(
@@ -421,13 +406,6 @@ class MessageQueueManager private constructor(
     ) {
         Reporter.log("enqueuePublishMel", logTag)
         sendAddToQueue(payload.map { it.toMqttData() })
-    }
-
-    private fun enqueuePublishPrecisePosition(
-        payload: PrecisePosition
-    ) {
-        Reporter.log("enqueuePublishPrecisePosition", logTag)
-        sendAddToQueue(listOf(payload.toMqttData()))
     }
 
     private fun enqueuePublishBridgeStatusDataMQTT(
@@ -489,9 +467,13 @@ class MessageQueueManager private constructor(
         sendSendCapabilities()
     }
 
+    private fun publishGatewayHeartbeatData() {
+        Reporter.log("publishGatewayHeartbeatData", logTag)
+        sendSendGatewayHeartbeat()
+    }
+
     private suspend fun publishPacketLogDataMQTT(
         payload: List<Any>,
-        isProd: Boolean,
         client: MqttAndroidClient,
     ) {
         if (payload.isEmpty()) return
@@ -511,7 +493,7 @@ class MessageQueueManager private constructor(
                 WiliotQueue.configuration = oldConfig.copy(
                     gwToken = null
                 )
-                publishPacketLogDataMQTT(payload, isProd, client)
+                publishPacketLogDataMQTT(payload, client)
             } catch (e: Exception) {
                 WiliotHealthMonitor.notifyMqttConnectionEstablished(false)
                 e.printStackTrace()
@@ -541,7 +523,6 @@ class MessageQueueManager private constructor(
 
     private suspend fun publishMelAckMQTT(
         payload: Ack,
-        isProd: Boolean,
         client: MqttAndroidClient,
     ) {
         Reporter.log("publishMelAckMQTT -> started", logTag)
@@ -556,7 +537,7 @@ class MessageQueueManager private constructor(
                 WiliotQueue.configuration = oldConfig.copy(
                     gwToken = null
                 )
-                publishMelAckMQTT(payload, isProd, client)
+                publishMelAckMQTT(payload, client)
             } catch (e: Exception) {
                 WiliotHealthMonitor.notifyMqttConnectionEstablished(false)
                 e.printStackTrace()
@@ -582,7 +563,6 @@ class MessageQueueManager private constructor(
 
     private suspend fun publishBridgeAckDataMQTT(
         payload: List<Any>,
-        isProd: Boolean,
         client: MqttAndroidClient,
     ) {
         if (payload.isEmpty()) return
@@ -601,7 +581,7 @@ class MessageQueueManager private constructor(
                 WiliotQueue.configuration = oldConfig.copy(
                     gwToken = null
                 )
-                publishBridgeAckDataMQTT(payload, isProd, client)
+                publishBridgeAckDataMQTT(payload, client)
             } catch (e: Exception) {
                 WiliotHealthMonitor.notifyMqttConnectionEstablished(false)
                 e.printStackTrace()
@@ -735,8 +715,8 @@ class MessageQueueManager private constructor(
     }
 
     private suspend fun getGwOwnerId(): String? {
-        if (Wiliot.brokerConfig.isCustomBroker) {
-            return Wiliot.brokerConfig.ownerId
+        if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker) {
+            return Wiliot.dynamicBrokerConfig.ownerId
         }
         return takeGwAccessToken("getGwOwnerId", checkExpiration = false)
             .takeUnless { it.isBlank() }?.asJWT()?.getUsername()
@@ -866,24 +846,24 @@ class MessageQueueManager private constructor(
         }
 
     private fun statusTopic(ownerId: String, fullGWId: String): String {
-        return if (Wiliot.brokerConfig.isCustomBroker)
-            Wiliot.brokerConfig.customConfig!!.statusTopic
+        return if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker)
+            Wiliot.dynamicBrokerConfig.customConfig!!.statusTopic
         else
-            "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            "status/$ownerId/$fullGWId"
     }
 
     private fun dataTopic(ownerId: String, fullGWId: String): String {
-        return if (Wiliot.brokerConfig.isCustomBroker)
-            Wiliot.brokerConfig.customConfig!!.dataTopic
+        return if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker)
+            Wiliot.dynamicBrokerConfig.customConfig!!.dataTopic
         else
-            "data${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            "data/$ownerId/$fullGWId"
     }
 
     private fun updateTopic(ownerId: String, fullGWId: String): String {
-        return if (Wiliot.brokerConfig.isCustomBroker)
-            Wiliot.brokerConfig.customConfig!!.updateTopic
+        return if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker)
+            Wiliot.dynamicBrokerConfig.customConfig!!.updateTopic
         else
-            "update${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId"
+            "update/$ownerId/$fullGWId"
     }
 
     private fun pickApiService(): WiliotQueueApiService {
@@ -1105,10 +1085,10 @@ class MessageQueueManager private constructor(
             val fullGWId = Wiliot.getFullGWId()
             var gwAccessToken: String?
             this.takeIf { !it.isConnected }?.apply {
-                gwAccessToken = if (Wiliot.brokerConfig.isCustomBroker.not())
+                gwAccessToken = if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker.not())
                     takeGwAccessToken("establishMqttClientConnection")
                 else
-                    Wiliot.brokerConfig.customConfig!!.password
+                    Wiliot.dynamicBrokerConfig.customConfig!!.password
                 if (BuildConfig.DEBUG) {
                     Reporter.log(
                         "establishMqttClientConnection(tag: $callerTag) -> client connect...",
@@ -1138,15 +1118,15 @@ class MessageQueueManager private constructor(
         fullGWId: String,
     ) =
         MqttConnectOptions().apply {
-            userName = if (Wiliot.brokerConfig.isCustomBroker) Wiliot.brokerConfig.customConfig!!.username else ownerId
+            userName = if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker) Wiliot.dynamicBrokerConfig.customConfig!!.username else ownerId
             password = gwAccessToken?.toCharArray()
             isAutomaticReconnect = false
             keepAliveInterval = 60
             setWill(
-                if (Wiliot.brokerConfig.isCustomBroker)
-                    Wiliot.brokerConfig.customConfig!!.statusTopic
+                if (Wiliot.dynamicBrokerConfig.isDynamicCustomBroker)
+                    Wiliot.dynamicBrokerConfig.customConfig!!.statusTopic
                 else
-                    "status${EnvironmentWiliot.mqttSuffix[Wiliot.configuration.environment.value]}/$ownerId/$fullGWId",
+                    "status/$ownerId/$fullGWId",
                 willPayloadByteArray,
                 0,
                 false
@@ -1199,6 +1179,11 @@ class MessageQueueManager private constructor(
         }
 
         for (msg in channel) {
+
+            if (BuildConfig.DEBUG) {
+                Reporter.log("QueueUpload message <${msg::class.java.simpleName}>", logTag)
+            }
+
             when (msg) {
                 is SendCapabilities -> {
                     uplinkNetScope.launch {

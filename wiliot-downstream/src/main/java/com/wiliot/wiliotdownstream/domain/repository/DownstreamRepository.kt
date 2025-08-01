@@ -52,7 +52,7 @@ object DownstreamRepository {
         if (msg == null) return
         WiliotHealthMonitor.notifyDownlinkMessageReceived()
         if (msg.isVmelMessage) {
-            msg.toDomainMessageOrNull()?.let{
+            msg.toDomainMessageOrNull()?.let {
                 it as? DownlinkActionMessage
             }?.rawTxPacket()?.let {
                 Wiliot.downstream().vBridge?.addMelPacket(it)

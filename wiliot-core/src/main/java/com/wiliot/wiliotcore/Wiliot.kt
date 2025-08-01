@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.location.Location
 import androidx.core.app.NotificationManagerCompat
-import com.wiliot.wiliotcore.config.BrokerConfig
+import com.wiliot.wiliotcore.config.DynamicBrokerConfig
 import com.wiliot.wiliotcore.config.Configuration
 import com.wiliot.wiliotcore.contracts.PrimaryTokenExpirationCallback
 import com.wiliot.wiliotcore.contracts.WiliotModule
@@ -160,7 +160,7 @@ object Wiliot {
     var configuration: Configuration = Configuration()
     var delegate: FrameworkDelegate = object : FrameworkDelegate() {}
 
-    var brokerConfig: BrokerConfig = BrokerConfig()
+    var dynamicBrokerConfig: DynamicBrokerConfig = DynamicBrokerConfig()
 
     fun getFullGWId(): String = if (initialized) uniqueDeviceId else throw IllegalStateException(
         "Wiliot SDK not initialized. You should call Wiliot.initialize(Context) before accessing SDK features"

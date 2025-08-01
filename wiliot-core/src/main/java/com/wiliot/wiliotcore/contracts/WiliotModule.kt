@@ -47,7 +47,6 @@ interface WiliotUpstreamModule : WiliotModule {
     val upstreamVirtualBridgeChannel: UpstreamVirtualBridgeChannel
     fun setExtraEdgeProcessor(processor: UpstreamExtraEdgeProcessingContract?)
     fun setExtraDataProcessor(processor: UpstreamExtraDataProcessingContract?)
-    fun setPrecisePositionSource(source: UpstreamPrecisePositioningContract?)
     fun setVirtualBridge(vBridge: VirtualBridgeContract)
     fun setupQueueProvider(provider: MessageQueueManagerProvider)
     fun start()
@@ -66,10 +65,5 @@ interface WiliotQueueModule : WiliotModule {
     fun msgQueueManager(): MessageQueueManagerContract
     fun cmdQueueManager(): CommandsQueueManagerContract
     fun setBleLogsEnabled(enabled: Boolean)
-}
-
-interface WiliotPositioningModule : WiliotModule {
-    val positioning: UpstreamPrecisePositioningContract?
-    fun start()
-    fun stop()
+    fun sendCapabilitiesAndHeartbeat()
 }

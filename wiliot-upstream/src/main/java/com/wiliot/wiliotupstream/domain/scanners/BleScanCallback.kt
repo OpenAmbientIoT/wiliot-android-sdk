@@ -5,6 +5,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.os.ParcelUuid
 import android.util.Log
+import com.wiliot.wiliotcore.BuildConfig
 import com.wiliot.wiliotcore.Wiliot
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
 import com.wiliot.wiliotcore.utils.Reporter
@@ -97,6 +98,13 @@ internal object BleScanCallback : ScanCallback() {
         if (WiliotAppConfigurationSource.configSource.isBleLogsEnabled())
             generateLogItem(internalCopy)
         BeaconDataRepository.judgeResult(internalCopy)
+
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                logTag,
+                "onScanResult: ${internalCopy.device.address} rssi: ${internalCopy.rssi} data: ${internalCopy.scanRecord?.raw}"
+            )
+        }
 
         if (Wiliot.configuration.btPacketsCounterEnabled) {
             packetsCounterMinute += 1

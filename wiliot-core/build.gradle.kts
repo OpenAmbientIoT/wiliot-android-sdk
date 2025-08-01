@@ -29,10 +29,8 @@ android {
 
         buildConfigField("String", "PROD_AWS_API_BASE", "\"${project.extra["prodAwsBaseUrl"]}\"")
         buildConfigField("String", "PROD_GCP_API_BASE", "\"${project.extra["prodGcpBaseUrl"]}\"")
-        buildConfigField("String", "TEST_AWS_API_BASE", "\"${project.extra["testAwsBaseUrl"]}\"")
-        buildConfigField("String", "TEST_GCP_API_BASE", "\"${project.extra["testGcpBaseUrl"]}\"")
-        buildConfigField("String", "DEV_AWS_API_BASE", "\"${project.extra["devAwsBaseUrl"]}\"")
-        buildConfigField("String", "DEV_GCP_API_BASE", "\"${project.extra["devGcpBaseUrl"]}\"")
+        buildConfigField("String", "PROD_AWS_MQTT_URL", "\"${project.extra["prodAwsMqttUrl"]}\"")
+        buildConfigField("String", "PROD_GCP_MQTT_URL", "\"${project.extra["prodGcpMqttUrl"]}\"")
         buildConfigField("Boolean", "SDK_REPORTER_LOGS_PRINTING_ENABLED", "${project.extra["sdkReporterLogsPrintingEnabled"]}")
     }
 

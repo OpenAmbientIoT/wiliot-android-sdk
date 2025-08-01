@@ -17,8 +17,6 @@ data class GatewayConfig(
 )
 
 data class AdditionalGatewayConfig(
-    @SerializedName("pacingPeriod")
-    val pacerIntervalSeconds: Long?,
     val upstreamEnabled: Boolean?,
     @SerializedName("uploadPixelsTraffic")
     val pixelsTrafficEnabled: Boolean?,

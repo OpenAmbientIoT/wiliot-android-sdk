@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.wiliot.wiliotcore.Wiliot
-import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
+import com.wiliot.wiliotcore.config.util.TrafficRule
 import com.wiliot.wiliotcore.model.BeaconWiliot
 import com.wiliot.wiliotcore.utils.*
 import com.wiliot.wiliotupstream.domain.service.ForegroundService
@@ -63,47 +63,72 @@ class BLEScanner {
             this.context?.get()?.bluetoothManager?.adapter?.takeIf { !it.isEnabled }
                 ?.run { enable() }
             filters.takeIf { it.isEmpty() }?.apply {
-                if (Wiliot.configuration.uploadPixelsTraffic) {
-                    if (Wiliot.configuration.dataOutputTrafficFilter != AdditionalGatewayConfig.DataOutputTrafficFilter.BRIDGES_ONLY) {
-                        val wiliotManufacturerFilter = ScanFilter.Builder()
-                            .setManufacturerData(Integer.parseInt("0500", 16), ByteArray(0))
-                            .build()
-                        val wiliotServiceFilter = ScanFilter.Builder()
-                            .setServiceData(BeaconWiliot.serviceUuid, ByteArray(0))
-                            .build()
-                        val wiliotServiceD2Filter = ScanFilter.Builder()
-                            .setServiceData(BeaconWiliot.serviceUuidD2p2, ByteArray(0))
-                            .build()
-                        add(wiliotManufacturerFilter)
-                        add(wiliotServiceFilter)
-                        add(wiliotServiceD2Filter)
-                        Reporter.log(
-                            "[FILTERS] Direct Pixel-packets filters added to ScanFilters",
-                            logTag
-                        )
-                    } else {
-                        Reporter.log(
-                            "[FILTERS] Direct Pixel-packets filters not added to ScanFilters because DataOutputTrafficFilter is BRIDGES_ONLY",
-                            logTag
-                        )
-                    }
-                    // add in any case, if Pixels traffic enabled
+                if (TrafficRule.shouldListenToDataTraffic) {
+                    // If enableDataTraffic is true
+                    // add filters for Direct Pixel-packets and sensors
+                    val wiliotManufacturerFilter = ScanFilter.Builder()
+                        .setManufacturerData(Integer.parseInt("0500", 16), ByteArray(0))
+                        .build()
+                    val wiliotServiceFilter = ScanFilter.Builder()
+                        .setServiceData(BeaconWiliot.serviceUuid, ByteArray(0))
+                        .build()
+                    val wiliotServiceD2Filter = ScanFilter.Builder()
+                        .setServiceData(BeaconWiliot.serviceUuidD2p2, ByteArray(0))
+                        .build()
+                    add(wiliotManufacturerFilter)
+                    add(wiliotServiceFilter)
+                    add(wiliotServiceD2Filter)
                     val sensorDataFilter = ScanFilter.Builder()
                         .setServiceData(BeaconWiliot.sensorServiceUuid, ByteArray(0))
                         .build()
                     add(sensorDataFilter)
+                    Reporter.log(
+                        "[FILTERS] Direct Pixel-packets filters added to ScanFilters",
+                        logTag
+                    )
+                } else {
+                    Reporter.log(
+                        "[FILTERS] Direct Pixel-packets and sensors filters not added to ScanFilters " +
+                                "because DataOutputTrafficFilter is BRIDGES_ONLY or uploadDataTraffic is false",
+                        logTag
+                    )
                 }
-                if (Wiliot.configuration.uploadConfigurationTraffic) {
+                if (TrafficRule.shouldEitherListenToDataOrEdgeTraffic) {
+                    // If enableEdgeTraffic is true or enableDataTraffic is true
+                    // add filter for FCC6 (this UUID used for both: retransmitted data and edge traffic)
                     val wiliotServiceFilter2 = ScanFilter.Builder()
                         .setServiceData(BeaconWiliot.serviceUuid2, ByteArray(0))
                         .build()
                     add(wiliotServiceFilter2)
+                    Reporter.log(
+                        "[FILTERS] Edge filters (data traffic + edge traffic) added to ScanFilters",
+                        logTag
+                    )
+                } else {
+                    Reporter.log(
+                        "[FILTERS] Edge filters not added to ScanFilters " +
+                                "because enableEdgeTraffic is false and enableDataTraffic is false",
+                        logTag
+                    )
+                }
+                if (TrafficRule.shouldListenToEdgeTraffic) {
                     val wiliotServiceBridgeFilter = ScanFilter.Builder()
                         .setServiceUuid(BeaconWiliot.bridgeServiceUuid)
                         .build()
                     add(wiliotServiceBridgeFilter)
+                    Reporter.log(
+                        "[FILTERS] Edge filters (edge traffic) added to ScanFilters",
+                        logTag
+                    )
+                } else {
+                    Reporter.log(
+                        "[FILTERS] Edge filters not added to ScanFilters " +
+                                "because enableEdgeTraffic is false",
+                        logTag
+                    )
                 }
             }
+            Reporter.log("[FILTERS] Filter count: ${filters.size}", logTag)
             this.context?.get()?.run {
                 maybeInitLeScanner(this)
             }

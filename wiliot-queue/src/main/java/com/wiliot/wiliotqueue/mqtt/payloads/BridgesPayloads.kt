@@ -8,7 +8,6 @@ import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
 import com.wiliot.wiliotcore.model.GatewayConfig
 import com.wiliot.wiliotcore.model.SharedGatewayModel
 import com.wiliot.wiliotcore.utils.helper.WiliotAppConfigurationSource
-import java.util.concurrent.TimeUnit
 
 data class PacketsLogPayload(
     val gatewayLogs: List<Any>
@@ -34,10 +33,9 @@ data class SoftwareGatewayCapabilitiesPayload(
             bridgeOtaUpgradeSupported = cloudManaged,
             gatewayConf = GatewayConfig(
                 additional = AdditionalGatewayConfig(
-                    pacerIntervalSeconds = TimeUnit.MILLISECONDS.toSeconds(Wiliot.configuration.pacingPeriodMs),
                     upstreamEnabled = WiliotAppConfigurationSource.configSource.isUpstreamEnabled(),
-                    pixelsTrafficEnabled = Wiliot.configuration.uploadPixelsTraffic,
-                    edgeTrafficEnabled = Wiliot.configuration.uploadConfigurationTraffic,
+                    pixelsTrafficEnabled = Wiliot.configuration.enableDataTraffic,
+                    edgeTrafficEnabled = Wiliot.configuration.enableEdgeTraffic,
                     bleLogsEnabled = WiliotAppConfigurationSource.configSource.isBleLogsEnabled(),
                     dataOutputTrafficFilter = Wiliot.configuration.dataOutputTrafficFilter.name,
                     versionName = Wiliot.sdkVersion
@@ -66,7 +64,10 @@ data class GatewayInfo(
     @SerializedName("batteryCurrentAvgMicroAmps")
     val bCurrentAvgMicroAmp: Int? = null,
     @SerializedName("batteryChargeLevel")
-    val bCapacity: Int? = null
+    val bCapacity: Int? = null,
+    val bleChipMacAddress: String? = Wiliot.virtualBridgeId?.replace(":", ""),
+    val bleChipSwVersion: String = Wiliot.sdkVersion,
+    val interfaceChipSwVersion: String = Wiliot.sdkVersion
 )
 
 data class SoftwareGatewayHeartbeatPayload(
@@ -91,15 +92,14 @@ data class SoftwareGatewayHeartbeatPayload(
             gatewayType = Configuration.SDK_GATEWAY_TYPE,
             gatewayConf = GatewayConfig(
                 additional = AdditionalGatewayConfig(
-                    pacerIntervalSeconds = TimeUnit.MILLISECONDS.toSeconds(Wiliot.configuration.pacingPeriodMs),
                     upstreamEnabled = WiliotAppConfigurationSource.configSource.isUpstreamEnabled(),
-                    pixelsTrafficEnabled = Wiliot.configuration.uploadPixelsTraffic,
-                    edgeTrafficEnabled = Wiliot.configuration.uploadConfigurationTraffic,
+                    pixelsTrafficEnabled = Wiliot.configuration.enableDataTraffic,
+                    edgeTrafficEnabled = Wiliot.configuration.enableEdgeTraffic,
                     bleLogsEnabled = WiliotAppConfigurationSource.configSource.isBleLogsEnabled(),
                     dataOutputTrafficFilter = Wiliot.configuration.dataOutputTrafficFilter.name,
                     versionName = Wiliot.delegate.applicationVersionName().extractSemanticVersion()
                 ),
-                gatewayVersion = Wiliot.delegate.applicationVersionName().extractSemanticVersion()
+                gatewayVersion = Wiliot.sdkVersion
             ),
             gatewayInfo = GatewayInfo(
                 hwStatus = hwStatus,

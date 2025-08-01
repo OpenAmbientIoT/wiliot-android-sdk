@@ -9,7 +9,6 @@ import com.wiliot.wiliotcore.model.CombinedSiPacket
 import com.wiliot.wiliotcore.model.MelModulePacket
 import com.wiliot.wiliotcore.model.Packet
 import com.wiliot.wiliotcore.model.PacketData
-import com.wiliot.wiliotcore.model.PrecisePosition
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.ScanResultInternal
 import com.wiliot.wiliotcore.utils.logTag
@@ -50,9 +49,6 @@ internal object BeaconDataRepository {
 
     private val mLogsPayload = MutableSharedFlow<List<Any>>()
     internal val logsPayload: SharedFlow<List<Any>> = mLogsPayload
-
-    private val mPrecisePositionPayload = MutableSharedFlow<PrecisePosition>()
-    internal val precisePositionPayload: SharedFlow<PrecisePosition> = mPrecisePositionPayload
 
     private val mBridgeAckPayload = MutableSharedFlow<List<String>>()
     internal val bridgeAckPayload: SharedFlow<List<String>> = mBridgeAckPayload
@@ -150,11 +146,6 @@ internal object BeaconDataRepository {
 
     internal suspend fun sendLogPayload(payload: List<Any>) {
         mLogsPayload.emit(payload)
-    }
-
-    internal suspend fun sendPrecisePosition(payload: PrecisePosition) {
-        if (System.currentTimeMillis() - payload.detectionTimestamp > 1000) return
-        mPrecisePositionPayload.emit(payload)
     }
 
     internal fun sendMelAckPayload(payload: Ack) {

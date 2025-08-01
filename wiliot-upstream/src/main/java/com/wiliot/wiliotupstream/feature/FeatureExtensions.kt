@@ -9,7 +9,6 @@ import com.wiliot.wiliotcore.contracts.MessageQueueManagerContract
 import com.wiliot.wiliotcore.contracts.UpstreamExtraDataProcessingContract
 import com.wiliot.wiliotcore.contracts.UpstreamExtraEdgeProcessingContract
 import com.wiliot.wiliotcore.contracts.UpstreamFeedbackChannel
-import com.wiliot.wiliotcore.contracts.UpstreamPrecisePositioningContract
 import com.wiliot.wiliotcore.contracts.UpstreamVirtualBridgeChannel
 import com.wiliot.wiliotcore.contracts.VirtualBridgeContract
 import com.wiliot.wiliotcore.contracts.WiliotUpstreamModule
@@ -74,8 +73,6 @@ class Upstream private constructor() : WiliotUpstreamModule {
             field = value
             if (mState.value != UpstreamState.STOPPED) value?.start()
         }
-
-    internal var precisePositionSource: UpstreamPrecisePositioningContract? = null
 
     internal var vBridge: VirtualBridgeContract? = null
 
@@ -190,13 +187,6 @@ class Upstream private constructor() : WiliotUpstreamModule {
      */
     override fun setExtraDataProcessor(processor: UpstreamExtraDataProcessingContract?) {
         this.extraDataProcessor = processor
-    }
-
-    /**
-     * Set implementation of [UpstreamPrecisePositioningContract]
-     */
-    override fun setPrecisePositionSource(source: UpstreamPrecisePositioningContract?) {
-        this.precisePositionSource = source
     }
 
     override fun setVirtualBridge(vBridge: VirtualBridgeContract) {

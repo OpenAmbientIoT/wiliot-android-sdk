@@ -1,5 +1,8 @@
 package com.wiliot.wiliotcore.health
 
+import com.wiliot.wiliotcore.Wiliot
+import com.wiliot.wiliotcore.config.VirtualBridgeConfig
+import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +42,8 @@ object WiliotHealthMonitor {
             if (launched) {
                 it.copy(
                     monitorLaunched = true,
-                    gwStartTime = System.currentTimeMillis()
+                    gwStartTime = System.currentTimeMillis(),
+                    trafficFilter = Wiliot.configuration.dataOutputTrafficFilter
                 )
             } else {
                 WiliotHealth()
@@ -56,7 +60,12 @@ object WiliotHealthMonitor {
     }
 
     private suspend fun beat() {
-        mState.update { it.copy(monitorLastHeartbeat = System.currentTimeMillis()) }
+        mState.update {
+            it.copy(
+                monitorLastHeartbeat = System.currentTimeMillis(),
+                trafficFilter = Wiliot.configuration.dataOutputTrafficFilter
+            )
+        }
         delay(500)
         beat()
     }
@@ -87,6 +96,34 @@ object WiliotHealthMonitor {
         mState.update { it.copy(lastUplinkDataSentTime = System.currentTimeMillis()) }
     }
 
+    /**
+     * Updates packets counter received by virtual Bridge.
+     */
+    fun updateVirtualBridgePktIn(newPackets: Int) {
+        val newValue = if (mState.value.vBridgePktIn < Long.MAX_VALUE - (newPackets + 1)) {
+            mState.value.vBridgePktIn + newPackets
+        } else {
+            0 // reset counter if it exceeds Long.MAX_VALUE
+        }
+        mState.update { it.copy(vBridgePktIn = newValue) }
+    }
+
+    /**
+     * Updates packets counter sent by virtual Bridge.
+     */
+    fun updateVirtualBridgePktOut(newPackets: Int) {
+        val newValue = if (mState.value.vBrgPktOut < Long.MAX_VALUE - (newPackets + 1)) {
+            mState.value.vBrgPktOut + newPackets
+        } else {
+            0 // reset counter if it exceeds Long.MAX_VALUE
+        }
+        mState.update { it.copy(vBrgPktOut = newValue) }
+    }
+
+    fun updateVirtualBridgeUniquePxMAC(newCount: Int) {
+        mState.update { it.copy(vBridgeUniquePxMAC = newCount) }
+    }
+
 }
 
 data class WiliotHealth(
@@ -103,7 +140,7 @@ data class WiliotHealth(
      */
     val btPacketsLast10minutes: Int = 0,
     /**
-     * SDk (GW mode) startup timestamp im millis
+     * SDK (GW mode) startup timestamp im millis
      */
     val gwStartTime: Long = 0,
     /**
@@ -121,7 +158,28 @@ data class WiliotHealth(
     /**
      * Internal heartbeat timestamp
      */
-    val monitorLastHeartbeat: Long = 0
+    val monitorLastHeartbeat: Long = 0,
+    /**
+     * Traffic filter for additional gateway configuration (gwDataMode)
+     */
+    val trafficFilter: AdditionalGatewayConfig.DataOutputTrafficFilter? = null,
+    /**
+     * Address of virtual Bridge
+     */
+    val bleAddress: String? = Wiliot.virtualBridgeId,
+    /**
+     * Packets, received by virtual Bridge
+     */
+    val vBridgePktIn: Long = 0,
+    /**
+     * Packets, sent by virtual Bridge
+     */
+    val vBrgPktOut: Long = 0,
+
+    /**
+     * Unique MAC addresses count of Pixels processed by virtual Bridge.
+     */
+    val vBridgeUniquePxMAC: Int = 0
 ) {
 
     /**

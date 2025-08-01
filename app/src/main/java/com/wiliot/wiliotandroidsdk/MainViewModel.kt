@@ -13,11 +13,14 @@ import com.wiliot.wiliotandroidsdk.utils.logTag
 import com.wiliot.wiliotandroidsdk.utils.upd
 import com.wiliot.wiliotcore.ServiceState
 import com.wiliot.wiliotcore.Wiliot
+import com.wiliot.wiliotcore.config.VirtualBridgeConfig
 import com.wiliot.wiliotcore.health.WiliotHealth
 import com.wiliot.wiliotcore.health.WiliotHealthMonitor
 import com.wiliot.wiliotcore.utils.helper.start
 import com.wiliot.wiliotcore.utils.helper.stop
 import com.wiliot.wiliotupstream.feature.upstream
+import com.wiliot.wiliotvirtualbridge.config.VConfig
+import com.wiliot.wiliotvirtualbridge.feature.VirtualBridge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
@@ -34,7 +37,8 @@ class MainViewModel @Inject constructor(
 
     data class State(
         val customPermissionDialog: RequestPermissionDialog? = null,
-        val wiliotHealth: WiliotHealth = WiliotHealth()
+        val wiliotHealth: WiliotHealth = WiliotHealth(),
+        val vBrgCfg: VirtualBridgeConfig = VConfig.config
     ): ViewModelState
 
     private val mState = mutableStateOf(State())
@@ -151,7 +155,8 @@ class MainViewModel @Inject constructor(
                 WiliotHealthMonitor.state.collectLatest {
                     mState.upd {
                         copy(
-                            wiliotHealth = it
+                            wiliotHealth = it,
+                            vBrgCfg = VConfig.config
                         )
                     }
                 }

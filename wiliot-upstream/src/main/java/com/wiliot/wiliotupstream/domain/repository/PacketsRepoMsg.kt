@@ -2,7 +2,7 @@ package com.wiliot.wiliotupstream.domain.repository
 
 import com.wiliot.wiliotcore.BuildConfig
 import com.wiliot.wiliotcore.Wiliot
-import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
+import com.wiliot.wiliotcore.config.util.TrafficRule
 import com.wiliot.wiliotcore.model.BaseMetaPacket
 import com.wiliot.wiliotcore.model.BridgeACKPacket
 import com.wiliot.wiliotcore.model.BridgeEarlyPacket
@@ -118,31 +118,31 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
         servicePacket?.apply {
             // skip all GW <=> Bridge control packets
             when {
-                this is DataPacket && Wiliot.configuration.uploadPixelsTraffic -> {
+                this is DataPacket && Wiliot.configuration.enableDataTraffic -> {
                     judgeBufferData.add(this)
                 }
 
-                this is MetaPacket && Wiliot.configuration.uploadPixelsTraffic -> {
+                this is MetaPacket && Wiliot.configuration.enableDataTraffic -> {
                     judgeBufferMeta.add(this)
                 }
 
-                this is ExternalSensorPacket && Wiliot.configuration.uploadPixelsTraffic -> {
+                this is ExternalSensorPacket && Wiliot.configuration.enableDataTraffic -> {
                     judgeBufferMeta.add(this)
                 }
 
-                this is CombinedSiPacket && Wiliot.configuration.uploadPixelsTraffic -> {
+                this is CombinedSiPacket && Wiliot.configuration.enableDataTraffic -> {
                     judgeBufferMeta.add(this)
                 }
 
-                this is BridgePacketAbstract && Wiliot.configuration.uploadConfigurationTraffic -> {
+                this is BridgePacketAbstract && Wiliot.configuration.enableEdgeTraffic -> {
                     judgeBufferBridge.add(this)
                 }
 
-                this is BridgeHbPacketAbstract && Wiliot.configuration.uploadConfigurationTraffic -> {
+                this is BridgeHbPacketAbstract && Wiliot.configuration.enableEdgeTraffic -> {
                     judgeBufferBrgHb.add(this)
                 }
 
-                this is MelModulePacket && Wiliot.configuration.uploadConfigurationTraffic -> {
+                this is MelModulePacket && Wiliot.configuration.enableEdgeTraffic -> {
                     judgeBufferMel.add(this)
                 }
 
@@ -176,8 +176,9 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
             dataPacketFilterPredicate
         )
 
-        val metaOutOfWindow: List<BaseMetaPacket> =
+        val metaOutOfWindow: List<BaseMetaPacket> = if (TrafficRule.shouldUploadRetransmittedDataTraffic)
             judgeBufferMeta.filter(metaPacketFilterPredicate)
+        else emptyList() // early skip if no retransmitted data traffic is allowed
         val siOutOfWindow: List<BaseMetaPacket> =
             judgeBufferMeta.filter(siFilterPredicate)
         val bridgeOutOfWindow: List<BridgePacketAbstract> =
@@ -195,10 +196,6 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
         judgeBufferBrgHb.removeAll(managementFilterPredicate)
         judgeBufferMel.removeAll(managementFilterPredicate)
         judgeBufferBridgeEarly.removeAll(managementFilterPredicate)
-
-        (dataPacketsOutOfWindow + metaOutOfWindow + bridgeOutOfWindow + hbOutOfWindow + melOutOfWindow).apply {
-            BeaconDataRepository.sendLogPayload(this.map { it.value })
-        }
 
         //send all ACKs at once
         judgeBufferBridgeAck.apply {
@@ -261,10 +258,9 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
         }
 
         val isResolveEnabled = WiliotAppConfigurationSource.configSource.resolveEnabled()
-        val mode = Wiliot.configuration.dataOutputTrafficFilter
 
         dataPacketsOutOfWindow.forEach { dataPacket ->
-            if (dataPacket.dataPacketType() == DataPacketType.DIRECT && mode != AdditionalGatewayConfig.DataOutputTrafficFilter.BRIDGES_ONLY) {
+            if (dataPacket.dataPacketType() == DataPacketType.DIRECT && TrafficRule.shouldUploadDirectDataTraffic) {
                 Wiliot.upstream().vBridge?.addDirectPacket(dataPacket)
             }
             if (isResolveEnabled) {
@@ -272,33 +268,49 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
             }
         }
 
-        (dataPacketsOutOfWindow + metaOutOfWindow).mapNotNull { abstractPacket ->
-            when (abstractPacket) {
-                is DataPacket,
-                is ExternalSensorPacket,
-                is MetaPacket
-                -> PacketData(abstractPacket)
+        if (TrafficRule.shouldUploadRetransmittedDataTraffic) {
+            (dataPacketsOutOfWindow + metaOutOfWindow).mapNotNull { abstractPacket ->
+                when (abstractPacket) {
+                    is DataPacket,
+                    is ExternalSensorPacket,
+                    is MetaPacket
+                        -> PacketData(abstractPacket)
 
-                else -> null
-            }
-        }.apply {
-            this.apply fApply@{
-                if (isEmpty())
-                    return@fApply
+                    else -> null
+                }
+            }.apply {
+                this.apply fApply@{
+                    if (isEmpty())
+                        return@fApply
 
-                BeaconDataRepository.sendInstantPayload(
-                    this
-                        .filter {
-                            if (it.packet is DataPacket)
+                    BeaconDataRepository.sendInstantPayload(
+                        this
+                            .filter {
+                                if (it.packet is DataPacket)
                                     (it.packet as DataPacket).dataPacketType() != DataPacketType.DIRECT
-                            else
-                                true
-                        }
-                )
+                                else
+                                    true
+                            }
+                    )
+                }
             }
         }
 
-        siOutOfWindow.map {
+        siOutOfWindow.filter { p ->
+
+            fun BaseMetaPacket.isFromVirtualBridge(): Boolean {
+                return this.deviceMac.replace(":", "").lowercase() == Wiliot.virtualBridgeId?.replace(":", "")?.lowercase()
+            }
+
+            if (TrafficRule.shouldUploadAnyDataTraffic) {
+                true
+            } else if (TrafficRule.shouldUploadDirectDataTraffic) {
+                p.isFromVirtualBridge()
+            } else {
+                // TrafficRule.shouldUploadRetransmittedDataTraffic == true
+                p.isFromVirtualBridge().not()
+            }
+        }.map {
             PacketData(it)
         }.apply {
             this.apply fApply@{
@@ -314,7 +326,7 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
         when (msg) {
             is JudgeResult -> with(msg.result) {
                 when {
-                    null != wiliotBridgeEarlyPacket && Wiliot.configuration.uploadConfigurationTraffic -> {
+                    null != wiliotBridgeEarlyPacket && Wiliot.configuration.enableEdgeTraffic -> {
                         with(wiliotBridgeEarlyPacket!!) {
                             if (this is BridgeEarlyPacket && !judgeBufferBridgeEarly.contains(this)) {
                                 judgeBufferBridgeEarly.add(this)
@@ -322,7 +334,7 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
                         }
                     }
 
-                    null != wiliotManufacturerData && Wiliot.configuration.uploadPixelsTraffic -> {
+                    null != wiliotManufacturerData && Wiliot.configuration.enableDataTraffic -> {
                         /** this is old data packet. we should process it using the internal device pacing
                          * but filter duplicates first */
                         with(wiliotManufacturerData!!) {

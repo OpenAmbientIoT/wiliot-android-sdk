@@ -1,7 +1,11 @@
 package com.wiliot.wiliotupstream.domain.service
 
 import android.annotation.SuppressLint
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -20,25 +24,30 @@ import com.wiliot.wiliotcore.model.BasePacketData
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.BridgeStatus
 import com.wiliot.wiliotcore.model.MelModulePacket
-import com.wiliot.wiliotcore.model.PrecisePosition
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.bluetoothManager
 import com.wiliot.wiliotcore.utils.connectivityManager
-import com.wiliot.wiliotcore.utils.every
 import com.wiliot.wiliotcore.utils.logTag
 import com.wiliot.wiliotcore.utils.service.WltServiceNotification
 import com.wiliot.wiliotcore.utils.service.WltServiceNotification.WLT_US_SERVICE_NOTIFICATION_ID
 import com.wiliot.wiliotupstream.BuildConfig
 import com.wiliot.wiliotupstream.R
 import com.wiliot.wiliotupstream.domain.repository.BeaconDataRepository
-import com.wiliot.wiliotupstream.feature.Upstream
 import com.wiliot.wiliotupstream.feature.queueManager
 import com.wiliot.wiliotupstream.feature.upstream
 import com.wiliot.wiliotupstream.feature.withExtraEdgeProcessor
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import java.util.*
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 
 class ForegroundService : Service() {
@@ -113,7 +122,6 @@ class ForegroundService : Service() {
     private var serviceCheckStr: String? = null
 
     private var job: Job? = null
-    private var internalSensorJob: Job? = null
     private val alertChannelId = "wiliot_service_alert"
     private val alertChannelName = "Wiliot Alert"
     private var networkCallback: NetworkCallbackImp? = null
@@ -197,24 +205,8 @@ class ForegroundService : Service() {
                 }
             }
 
-            serviceScope.launch {
-                BeaconDataRepository.precisePositionPayload.collectLatest {
-                    Reporter.log("publish precise position from Service (scs: $serviceCheckStr)", logTag)
-                    if (it.isValid()) publishPrecisePosition(it)
-                }
-            }
-
             doPublishCapabilities()
         }
-
-        kotlin.runCatching { internalSensorJob?.cancel() }
-        internalSensorJob = if (Wiliot.configuration.precisePositioningEnabled) serviceScope.every(TimeUnit.SECONDS.toMillis(1)) {
-            Reporter.log("internalSensorJob -> poll", logTag)
-            Upstream.getInstance().precisePositionSource?.getLastDetectedPosition()?.value?.let {
-                Reporter.log("internalSensorJob -> RESULT: $it", logTag)
-                BeaconDataRepository.sendPrecisePosition(it)
-            }
-        } else null
 
         attachUncaughtExceptionHandler()
 
@@ -265,15 +257,6 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun publishPrecisePosition(payload: PrecisePosition) {
-        serviceScope.launch {
-            queueManager.publishPrecisePosition(
-                payload,
-                Wiliot.configuration.environment
-            )
-        }
-    }
-
     private fun publishBridgesHb(payload: List<BridgeHbPacketAbstract>) {
         serviceScope.launch {
             queueManager.publishBridgeHb(payload, Wiliot.configuration.environment)
@@ -283,8 +266,7 @@ class ForegroundService : Service() {
     private fun doPublishUsingPayload(payload: MutableSet<BasePacketData>) {
         serviceScope.launch {
             queueManager.publishPayload(
-                payload,
-                Wiliot.configuration.environment
+                payload
             )
         }
     }

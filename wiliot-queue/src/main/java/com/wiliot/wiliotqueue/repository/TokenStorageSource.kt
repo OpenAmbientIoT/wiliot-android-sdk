@@ -2,7 +2,7 @@ package com.wiliot.wiliotqueue.repository
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotcore.utils.logTag
 import com.wiliot.wiliotqueue.di.tokenPrefs
 
@@ -44,7 +44,7 @@ class TokenStorageSource private constructor(
 
     fun clearAllTokens(environmentWiliot: EnvironmentWiliot) {
         mSharedPreferences.value.all.filter {
-            it.key.contains("_${environmentWiliot}_")
+            it.key.contains("_${environmentWiliot.envName}_")
         }.map {
             it.key
         }.let { keysToRemove ->
@@ -62,7 +62,7 @@ class TokenStorageSource private constructor(
 
     // region [Utils]
 
-    private fun EnvironmentWiliot.generateKeyFor(key: String, ownerId: String) = "${key}_${this}_$ownerId"
+    private fun EnvironmentWiliot.generateKeyFor(key: String, ownerId: String) = "${key}_${this.envName}_$ownerId"
 
     // endregion
 

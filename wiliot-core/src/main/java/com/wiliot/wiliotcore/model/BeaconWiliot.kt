@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.le.ScanResult
 import android.os.Parcel
 import android.os.ParcelUuid
+import com.wiliot.wiliotcore.BuildConfig
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.ScanResultInternal
 import com.wiliot.wiliotcore.utils.bitMask
@@ -17,7 +18,7 @@ class BeaconWiliot {
         val serviceUuidTest: ParcelUuid =
             ParcelUuid.fromString("0000FDD0-0000-1000-8000-00805F9B34FB")
         val bridgeServiceUuid: ParcelUuid =
-            ParcelUuid.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+            ParcelUuid.fromString("0000180a-0000-1000-8000-00805f9b34fb") // for bridges in connectable mode
         val serviceUuid: ParcelUuid = ParcelUuid.fromString("0000FDAF-0000-1000-8000-00805F9B34FB")
         val serviceUuid2: ParcelUuid = ParcelUuid.fromString("0000FCC6-0000-1000-8000-00805F9B34FB")
         val sensorServiceUuid: ParcelUuid = ParcelUuid.fromString("0000FC90-0000-1000-8000-00805F9B34FB")
@@ -25,7 +26,6 @@ class BeaconWiliot {
             ParcelUuid.fromString("000005AF-0000-1000-8000-00805F9B34FB")
         val manufactureUuid: ParcelUuid =
             ParcelUuid.fromString("00000500-0000-1000-8000-00805F9B34FB")
-        const val packetLongLength = 27 // without service /manufacture ID
     }
 }
 
@@ -1094,7 +1094,11 @@ interface Packet {
                     index = endIndex
                 }
 
-                return if (endIndex > 0) normalized.substring(4, endIndex) else null
+                return if (endIndex > 0) normalized.substring(4, endIndex).also {
+                    if (BuildConfig.DEBUG) {
+                        Reporter.log("Sensor BLE 5 packet: $it", beaconLogTag)
+                    }
+                } else null
             } catch (ex: Exception) {
                 return null
             }

@@ -1,6 +1,5 @@
 package com.wiliot.wiliotqueue.mqtt.model
 
-import com.wiliot.wiliotcore.Wiliot
 import com.wiliot.wiliotcore.WiliotCounter
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.BridgePacketAbstract
@@ -8,8 +7,6 @@ import com.wiliot.wiliotcore.model.CombinedSiPacket
 import com.wiliot.wiliotcore.model.DataPacketType
 import com.wiliot.wiliotcore.model.MelModulePacket
 import com.wiliot.wiliotcore.model.PacketData
-import com.wiliot.wiliotcore.model.PrecisePosition
-import com.wiliot.wiliotcore.model.toHexPayload
 import java.io.Serializable
 
 abstract class MQTTBaseData(
@@ -53,7 +50,7 @@ class PackedDataMetaMQTT(
 
         private fun PacketData.isSensorData(): Boolean = packet.value.startsWith(DataPacketType.SENSOR_DATA.prefix, ignoreCase = true)
 
-        fun fromPacketData(packetData: PacketData, counter: Long) = when {
+        fun fromPacketData(packetData: PacketData) = when {
             packetData.isCombinedSiData() -> PackedDataMetaMQTT(
                 payload = packetData.data,
                 rssi = packetData.rssi,
@@ -92,15 +89,6 @@ data class PackedDataInternalSensorMQTT(
 
 // region [Utils]
 
-@OptIn(ExperimentalStdlibApi::class)
-fun PrecisePosition.toMqttData(): PackedDataInternalSensorMQTT {
-    return PackedDataInternalSensorMQTT(
-        timestamp = detectionTimestamp,
-        payload = this.toHexPayload(),
-        sensorId = Wiliot.getFullGWId()
-    )
-}
-
 fun BridgeHbPacketAbstract.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
         payload = value,
@@ -129,7 +117,7 @@ fun BridgePacketAbstract.toMqttData(): PackedEdgeDataMQTT {
 }
 
 fun PacketData.toMqttData(): PackedDataMetaMQTT? {
-    return PackedDataMetaMQTT.fromPacketData(this, WiliotCounter.value)
+    return PackedDataMetaMQTT.fromPacketData(this)
 }
 
 // endregion

@@ -1,7 +1,7 @@
 package com.wiliot.wiliotcore.contracts
 
 import android.app.Notification
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotcore.model.*
 
 /**
@@ -17,7 +17,6 @@ interface MessageQueueManagerContract {
      */
     fun publishPayload(
         payload: MutableSet<BasePacketData>,
-        environmentWiliot: EnvironmentWiliot,
     )
 
     /**
@@ -66,8 +65,6 @@ interface MessageQueueManagerContract {
      */
     fun publishBridgeHb(payload: List<BridgeHbPacketAbstract>, environmentWiliot: EnvironmentWiliot)
 
-    fun publishPrecisePosition(payload: PrecisePosition, environmentWiliot: EnvironmentWiliot)
-
     /**
      * Performs initialisation of Actor and Scope for the Queue module. It is similar to
      * [com.wiliot.wiliotcore.contracts.CommandsQueueManagerContract.ensureUploadQueueActive].
@@ -111,6 +108,11 @@ interface MessageQueueManagerContract {
      * special flags etc. Used once SDK (GW mode) was started.
      */
     fun publishCapabilities()
+
+    /**
+     * Used to publish Gateway Heartbeat packets to the Cloud..
+     */
+    fun publishGatewayHeartbeat()
 
     /**
      * Used to make transport service running as Foreground Service. Used at Upstream startup, or as

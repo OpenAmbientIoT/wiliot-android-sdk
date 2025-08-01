@@ -1,7 +1,7 @@
 package com.wiliot.wiliotcore.contracts
 
 import android.content.ContextWrapper
-import com.wiliot.wiliotcore.legacy.EnvironmentWiliot
+import com.wiliot.wiliotcore.env.EnvironmentWiliot
 import com.wiliot.wiliotcore.model.DownlinkMessage
 import kotlinx.coroutines.flow.StateFlow
 
@@ -25,7 +25,7 @@ interface CommandsQueueManagerContract {
      * commands from the Cloud (e.g. Configuration change or commands to broadcast special packets
      * to the nearby devices)
      */
-    fun subscribeOnDownlink(environmentWiliot: EnvironmentWiliot): StateFlow<DownlinkMessage?>
+    fun subscribeOnDownlink(): StateFlow<DownlinkMessage?>
 
     /**
      * Used to clear current Downlink command received from the Cloud. Should be used after current

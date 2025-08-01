@@ -16,6 +16,7 @@ import com.wiliot.wiliotcore.model.DownlinkCustomBrokerMessage
 import com.wiliot.wiliotcore.utils.Reporter
 import com.wiliot.wiliotcore.utils.every
 import com.wiliot.wiliotcore.utils.helper.handleBrokerConfigurationChangeRequest
+import com.wiliot.wiliotcore.utils.helper.handleDownlinkActionGatewayMessage
 import com.wiliot.wiliotcore.utils.helper.handleSdkConfigurationChangeRequest
 import com.wiliot.wiliotcore.utils.logTag
 import com.wiliot.wiliotcore.utils.service.WltServiceNotification
@@ -112,7 +113,7 @@ class DownstreamService : Service() {
 
         subscriptionJob?.runCatching { cancel() }
         subscriptionJob = serviceScope.launch {
-            commandsManager.subscribeOnDownlink(Wiliot.configuration.environment).let {
+            commandsManager.subscribeOnDownlink().let {
                 it.collectLatest { m ->
                     DownstreamRepository.onNewMessage(m)
                 }
@@ -139,7 +140,8 @@ class DownstreamService : Service() {
     }
 
     private fun processDownlinkActionMessage(msg: DownlinkActionMessage) {
-        when (msg.action) {
+        Reporter.log("processDownlinkActionMessage: ${msg.action}", logTag)
+        when (val dAction = msg.action) {
             DownlinkAction.ADVERTISE -> {
                 BleCommandsAdvertising.startAdvertising(
                     context = this@DownstreamService,
@@ -197,6 +199,10 @@ class DownstreamService : Service() {
                 }
             }
 
+            DownlinkAction.GET_GW_INFO -> {
+                Wiliot.handleDownlinkActionGatewayMessage(dAction)
+            }
+
             DownlinkAction.PREPARE_BRIDGE_IMAGE,
             DownlinkAction.REBOOT_BRIDGE,
             DownlinkAction.UPGRADE_BRIDGE,
@@ -212,10 +218,12 @@ class DownstreamService : Service() {
     }
 
     private fun processDownlinkConfigurationMessage(msg: DownlinkConfigurationMessage) {
+        Reporter.log("processDownlinkConfigurationMessage", logTag)
         Wiliot.handleSdkConfigurationChangeRequest(msg)
     }
 
     private fun processDownlinkCustomBrokerMessage(msg: DownlinkCustomBrokerMessage) {
+        Reporter.log("processDownlinkCustomBrokerMessage", logTag)
         Wiliot.handleBrokerConfigurationChangeRequest(msg)
     }
 
