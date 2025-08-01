@@ -1,0 +1,54 @@
+name: Publish SDK to Maven Central
+
+on:
+  workflow_dispatch:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+  OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+  SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+  SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+  SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK Tools
+        run: |
+          sdkmanager "platform-tools" \
+                     "platforms;android-34" \
+                     "build-tools;34.0.0" \
+                     "cmdline-tools;latest" \
+                     "ndk;25.2.9519653" \
+                     "cmake;3.22.1"
+
+      - name: Set up GPG key for signing
+        run: |
+          echo "$SIGNING_KEY" | base64 -d > /tmp/signingkey.asc
+          gpg --batch --import /tmp/signingkey.asc
+          gpg --batch --yes --edit-key $SIGNING_KEY_ID trust quit <<< "5"
+          rm -f /tmp/signingkey.asc
+
+      - name: Publish SDK modules to Maven Central
+        run: |
+          ./gradlew publish -PreleaseToMavenCentral=true --stacktrace
