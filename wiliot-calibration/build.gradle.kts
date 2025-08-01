@@ -131,7 +131,6 @@ publishing {
 signing {
     if (isMavenCentral) {
         useInMemoryPgpKeys(
-            System.getenv("SIGNING_KEY_ID"),
             System.getenv("SIGNING_KEY"),
             System.getenv("SIGNING_PASSWORD")
         )
