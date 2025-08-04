@@ -1,7 +1,10 @@
+import java.util.Base64
+
 plugins {
     `java-platform`
     `maven-publish`
     id("com.vanniktech.maven.publish") version libs.versions.vanniktech
+    id("signing")
 }
 
 // Apply shared version constants.
@@ -123,18 +126,18 @@ mavenPublishing {
 //        }
 //    }
 //}
-//
-//signing {
-//    if (isMavenCentral) {
-//        val encodedKey = findProperty("SIGNING_KEY") as String?
-//        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
-//
-//        if (encodedKey != null && signingPassword != null) {
-//            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
-//            useInMemoryPgpKeys(decodedKey, signingPassword)
-//            sign(publishing.publications["mavenBom"])
-//        } else {
-//            logger.error("Signing key or password not provided.")
-//        }
-//    }
-//}
+
+signing {
+    if (isMavenCentral) {
+        val encodedKey = findProperty("SIGNING_KEY") as String?
+        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
+
+        if (encodedKey != null && signingPassword != null) {
+            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
+            useInMemoryPgpKeys(decodedKey, signingPassword)
+            sign(publishing.publications["mavenBom"])
+        } else {
+            logger.error("Signing key or password not provided.")
+        }
+    }
+}
