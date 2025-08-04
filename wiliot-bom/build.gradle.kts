@@ -1,9 +1,7 @@
-import java.util.Base64
-
 plugins {
     `java-platform`
     `maven-publish`
-    signing
+    id("com.vanniktech.maven.publish") version libs.versions.vanniktech
 }
 
 // Apply shared version constants.
@@ -36,78 +34,107 @@ dependencies {
 
 val isMavenCentral = project.findProperty("releaseToMavenCentral") == "true"
 
-publishing {
-    publications {
-        create<MavenPublication>("mavenBom") {
-            from(components["javaPlatform"])
-            groupId = project.group.toString()
-            artifactId = "wiliot-bom"
-            version = project.version.toString()
+mavenPublishing {
+    publishToMavenCentral()
 
-            pom {
-                name.set("Wiliot SDK BOM")
-                description.set("Bill of Materials for Wiliot Android SDK modules")
-                url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("wiliot")
-                        name.set("Wiliot")
-                        email.set("support@wiliot.com")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
-                    developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
-                    url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
-                }
+    signAllPublications()
+
+    pom {
+        name.set("Wiliot Android SDK BOM")
+        description.set("Bill of Materials for Wiliot Android SDK modules")
+        url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
+        }
+        developers {
+            developer {
+                id.set("wiliot")
+                name.set("Wiliot")
+                email.set("support@wiliot.com")
+            }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
+            developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
+            url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
         }
     }
 
-    repositories {
-        if (isMavenCentral) {
-            maven {
-                name = "MavenCentral"
-                url = uri("https://central.sonatype.com/api/v1/publisher/deployments")
-                credentials(HttpHeaderCredentials::class.java) {
-                    name = "Authorization"
-                    value = "Bearer ${System.getenv("SONATYPE_TOKEN")}"
-                }
-                authentication {
-                    create<HttpHeaderAuthentication>("header")
-                }
-            }
-        } else {
-            mavenLocal()
-            maven {
-                name = "CodeArtifact"
-                url = uri("https://wiliot-cloud-096303741971.d.codeartifact.us-east-2.amazonaws.com/maven/maven/")
-                credentials {
-                    username = "aws"
-                    password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
-                }
-            }
-        }
-    }
 }
 
-signing {
-    if (isMavenCentral) {
-        val encodedKey = findProperty("SIGNING_KEY") as String?
-        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
-
-        if (encodedKey != null && signingPassword != null) {
-            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
-            useInMemoryPgpKeys(decodedKey, signingPassword)
-            sign(publishing.publications["mavenBom"])
-        } else {
-            logger.error("Signing key or password not provided.")
-        }
-    }
-}
+//publishing {
+//    publications {
+//        create<MavenPublication>("mavenBom") {
+//            from(components["javaPlatform"])
+//            groupId = project.group.toString()
+//            artifactId = "wiliot-bom"
+//            version = project.version.toString()
+//
+//            pom {
+//                name.set("Wiliot SDK BOM")
+//                description.set("Bill of Materials for Wiliot Android SDK modules")
+//                url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+//                licenses {
+//                    license {
+//                        name.set("The Apache License, Version 2.0")
+//                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+//                    }
+//                }
+//                developers {
+//                    developer {
+//                        id.set("wiliot")
+//                        name.set("Wiliot")
+//                        email.set("support@wiliot.com")
+//                    }
+//                }
+//                scm {
+//                    connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
+//                    developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
+//                    url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+//                }
+//            }
+//        }
+//    }
+//
+//    repositories {
+//        if (isMavenCentral) {
+//            maven {
+//                name = "MavenCentral"
+//                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+//                credentials {
+//                    username = System.getenv("OSSRH_USERNAME")
+//                    password = System.getenv("OSSRH_PASSWORD")
+//                }
+//            }
+//        } else {
+//            mavenLocal()
+//            maven {
+//                name = "CodeArtifact"
+//                url = uri("https://wiliot-cloud-096303741971.d.codeartifact.us-east-2.amazonaws.com/maven/maven/")
+//                credentials {
+//                    username = "aws"
+//                    password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
+//                }
+//            }
+//        }
+//    }
+//}
+//
+//signing {
+//    if (isMavenCentral) {
+//        val encodedKey = findProperty("SIGNING_KEY") as String?
+//        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
+//
+//        if (encodedKey != null && signingPassword != null) {
+//            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
+//            useInMemoryPgpKeys(decodedKey, signingPassword)
+//            sign(publishing.publications["mavenBom"])
+//        } else {
+//            logger.error("Signing key or password not provided.")
+//        }
+//    }
+//}

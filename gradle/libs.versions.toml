@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 hiltAndroid = "2.49"
 playServicesLocation = "21.3.0"
 constraintlayoutCompose = "1.1.1"
+vanniktech="0.34.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
