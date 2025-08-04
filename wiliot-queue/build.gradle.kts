@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -143,10 +145,15 @@ publishing {
 
 signing {
     if (isMavenCentral) {
-        useInMemoryPgpKeys(
-            System.getenv("SIGNING_KEY"),
-            System.getenv("SIGNING_PASSWORD")
-        )
-        sign(publishing.publications["release"])
+        val encodedKey = findProperty("SIGNING_KEY") as String?
+        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
+
+        if (encodedKey != null && signingPassword != null) {
+            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
+            useInMemoryPgpKeys(decodedKey, signingPassword)
+            sign(publishing.publications["release"])
+        } else {
+            logger.error("Signing key or password not provided.")
+        }
     }
 }
