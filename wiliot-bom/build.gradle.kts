@@ -74,10 +74,13 @@ publishing {
         if (isMavenCentral) {
             maven {
                 name = "MavenCentral"
-                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                credentials {
-                    username = System.getenv("OSSRH_USERNAME")
-                    password = System.getenv("OSSRH_PASSWORD")
+                url = uri("https://central.sonatype.com/api/v1/publisher/deployments")
+                credentials(HttpHeaderCredentials::class.java) {
+                    name = "Authorization"
+                    value = "Bearer ${System.getenv("SONATYPE_TOKEN")}"
+                }
+                authentication {
+                    create<HttpHeaderAuthentication>("header")
                 }
             }
         } else {
