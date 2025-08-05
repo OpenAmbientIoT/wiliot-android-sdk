@@ -16,7 +16,7 @@ modules:
   wiliot-downstream: minor
   wiliot-network-edge: minor
   wiliot-network-meta: minor
-  wiliot-queue: patch
+  wiliot-queue: minor
   wiliot-resolve-edge: minor
   wiliot-resolve-data: minor
   wiliot-upstream: minor
