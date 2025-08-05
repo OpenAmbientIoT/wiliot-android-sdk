@@ -1,16 +1,38 @@
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
-    id("maven-publish")
-    id("signing")
+    id("com.vanniktech.maven.publish") version libs.versions.vanniktech
+    signing
 }
 
 // Apply shared config files.
 apply(from = "../constants.gradle")
 apply(from = "../sdk-versions.gradle")
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
+}
+
+fun getProperty(propertyName: String): String? {
+    return System.getenv("ORG_GRADLE_PROJECT_$propertyName")
+        ?: System.getenv(propertyName)
+        ?: localProperties.getProperty(propertyName)
+}
+
+val encodedKey = getProperty("signingInMemoryKey")
+val decodedKey = encodedKey?.let { String(Base64.getDecoder().decode(it)) }
+project.extra.set("mavenCentralUsername", getProperty("mavenCentralUsername"))
+project.extra.set("mavenCentralPassword", getProperty("mavenCentralPassword"))
+project.extra.set("signingInMemoryKey", decodedKey)
+project.extra.set("signingInMemoryKeyId", getProperty("signingInMemoryKeyId"))
+project.extra.set("signingInMemoryKeyPassword", getProperty("signingInMemoryKeyPassword"))
 
 group = "com.wiliot"
 val archivesBaseName = "wiliot-edge"
@@ -48,12 +70,6 @@ android {
     }
 
     android.buildFeatures.buildConfig = true
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
 }
 
 dependencies {
@@ -69,83 +85,47 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
 
-val isMavenCentral = project.findProperty("releaseToMavenCentral") == "true"
+mavenPublishing {
+    coordinates(group.toString(), archivesBaseName, version.toString())
 
-publishing {
-    publications {
-        create<MavenPublication>("release") {
-            groupId = project.group.toString()
-            artifactId = archivesBaseName
-            version = project.version.toString()
-
-            afterEvaluate {
-                from(components["release"])
+    pom {
+        name.set("Wiliot Android SDK")
+        description.set("Edge SDK module for Wiliot Android integration")
+        url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
-
-            pom {
-                name.set("Wiliot Android SDK")
-                description.set("Downstream SDK module for Wiliot Android integration")
-                url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
-
-                licenses {
-                    license {
-                        name.set("The Apache License, Version 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-
-                developers {
-                    developer {
-                        id.set("wiliot")
-                        name.set("Wiliot")
-                        email.set("support@wiliot.com")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
-                    developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
-                    url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
-                }
+        }
+        developers {
+            developer {
+                id.set("wiliot")
+                name.set("Wiliot")
+                email.set("support@wiliot.com")
             }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/OpenAmbientIoT/wiliot-android-sdk.git")
+            developerConnection.set("scm:git:ssh://github.com:OpenAmbientIoT/wiliot-android-sdk.git")
+            url.set("https://github.com/OpenAmbientIoT/wiliot-android-sdk")
         }
     }
 
-    repositories {
-        if (isMavenCentral) {
-            maven {
-                name = "MavenCentral"
-                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                credentials {
-                    username = System.getenv("OSSRH_USERNAME")
-                    password = System.getenv("OSSRH_PASSWORD")
-                }
-            }
-        } else {
-            mavenLocal()
-            maven {
-                name = "CodeArtifact"
-                url = uri("https://wiliot-cloud-096303741971.d.codeartifact.us-east-2.amazonaws.com/maven/maven/")
-                credentials {
-                    username = "aws"
-                    password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
-                }
-            }
-        }
-    }
+    publishToMavenCentral()
+
+    signAllPublications()
+
 }
 
 signing {
-    if (isMavenCentral) {
-        val encodedKey = findProperty("SIGNING_KEY") as String?
-        val signingPassword = findProperty("SIGNING_PASSWORD") as String?
+    val signingPassword = findProperty("signingInMemoryKeyPassword") as String?
 
-        if (encodedKey != null && signingPassword != null) {
-            val decodedKey = String(Base64.getDecoder().decode(encodedKey))
-            useInMemoryPgpKeys(decodedKey, signingPassword)
-            sign(publishing.publications["release"])
-        } else {
-            logger.error("Signing key or password not provided.")
-        }
+    if (encodedKey != null && signingPassword != null) {
+        useGpgCmd()
+        useInMemoryPgpKeys(decodedKey, signingPassword)
+    } else {
+        logger.error("Signing key or password not provided.")
     }
 }
