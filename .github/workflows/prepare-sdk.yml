@@ -14,6 +14,7 @@ env:
 
 jobs:
   bump-if-needed:
+    if: github.ref_name == 'develop'
     runs-on: ubuntu-latest
 
     steps:
