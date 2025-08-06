@@ -1,6 +1,11 @@
 name: Prepare new SDK BOM version
 
 on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - closed
   workflow_dispatch:
     branches:
       - develop
@@ -14,7 +19,7 @@ env:
 
 jobs:
   bump-if-needed:
-    if: github.ref_name == 'develop'
+    if: github.ref_name == 'develop' && (github.event_name != 'pull_request' || github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
 
     steps:
