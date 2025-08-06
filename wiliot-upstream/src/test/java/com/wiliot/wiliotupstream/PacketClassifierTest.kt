@@ -3,7 +3,7 @@ package com.wiliot.wiliotupstream
 import com.wiliot.wiliotcore.model.BridgeConfigPacketV5
 import com.wiliot.wiliotcore.model.BridgeHbPacket
 import com.wiliot.wiliotcore.model.BridgeHbPacketV5
-import com.wiliot.wiliotcore.model.CombinedSiPacket
+import com.wiliot.wiliotcore.model.UnifiedEchoPacket
 import com.wiliot.wiliotcore.model.DataPacket
 import com.wiliot.wiliotcore.model.ExternalSensorPacket
 import com.wiliot.wiliotcore.model.MelModulePacket
@@ -55,7 +55,7 @@ class PacketClassifierTest {
 
     @Test
     fun `SI payload classified as CombinedSiPacket`() {
-        assertTrue(Packet.from(combinedSiPayload, scanResult) is CombinedSiPacket)
+        assertTrue(Packet.from(combinedSiPayload, scanResult) is UnifiedEchoPacket)
     }
 
     @Test

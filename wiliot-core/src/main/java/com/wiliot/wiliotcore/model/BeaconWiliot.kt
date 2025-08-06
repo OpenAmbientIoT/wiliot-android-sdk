@@ -15,8 +15,6 @@ import kotlin.experimental.and
 class BeaconWiliot {
     companion object {
         const val MANUFACTURED_UUID = 0x0500
-        val serviceUuidTest: ParcelUuid =
-            ParcelUuid.fromString("0000FDD0-0000-1000-8000-00805F9B34FB")
         val bridgeServiceUuid: ParcelUuid =
             ParcelUuid.fromString("0000180a-0000-1000-8000-00805f9b34fb") // for bridges in connectable mode
         val serviceUuid: ParcelUuid = ParcelUuid.fromString("0000FDAF-0000-1000-8000-00805F9B34FB")
@@ -92,7 +90,19 @@ data class DataPacket(
     )
 
     fun dataPacketType(): DataPacketType? {
-        return DataPacketType.values().firstOrNull { value.startsWith(it.prefix) }
+        if (value.length != Packet.DATA_PACKET_LEN_CHARS) {
+            // BLE5
+            return value.takeIf {
+                it.length > 8
+            }?.let { pkt ->
+                DataPacketType.entries.firstOrNull {
+                    pkt.substring(4, 8).equals(it.prefix, ignoreCase = true)
+                }
+            }
+        }
+
+        // BLE4
+        return DataPacketType.entries.firstOrNull { value.startsWith(it.prefix, ignoreCase = true) }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -201,14 +211,43 @@ data class ExternalSensorPacket(
 
 }
 
-data class CombinedSiPacket(
+abstract class AbstractEchoPacket : BaseMetaPacket()
+
+data class Ble5EchoPacket(
     override var value: String,
     private val scanResult: ScanResultInternal,
     override val timestamp: Long = System.currentTimeMillis()
-) : BaseMetaPacket() {
+) : AbstractEchoPacket() {
+    override fun equals(other: Any?): Boolean = when(other) {
+        is Ble5EchoPacket -> super.equals(other) && sourceAddress == other.sourceAddress
+        else -> false
+    }
+
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
+
+    override val deviceMac: String
+        get() = scanResult.device.address
+
+    override val scanRssi: Int
+        get() = scanResult.rssi
+
+    internal val sourceAddress: Long
+        get() = aliasBridgeId.toLong(16)
+
+    val aliasBridgeId: String
+        get() = scanResult.device.address.replace(":", "")
+}
+
+data class UnifiedEchoPacket(
+    override var value: String,
+    private val scanResult: ScanResultInternal,
+    override val timestamp: Long = System.currentTimeMillis()
+) : AbstractEchoPacket() {
 
     override fun equals(other: Any?): Boolean = when(other) {
-        is CombinedSiPacket -> super.equals(other) && sourceAddress == other.sourceAddress
+        is UnifiedEchoPacket -> super.equals(other) && sourceAddress == other.sourceAddress
         else -> false
     }
 
@@ -1023,10 +1062,10 @@ interface Packet {
         private val String.isSensorMetaPacket: Boolean
             get() = GROUP_ID_SENSOR == pGroupIdMajor
 
-        private val String.isCombinedSiPacket: Boolean
-            get() = (GROUP_ID_COMBINED_SI == pGroupIdMajor.and(GROUP_ID_COMBINED_SI))
-                    || (GROUP_ID_COMBINED_SI_2 == pGroupIdMajor.and(GROUP_ID_COMBINED_SI_2))
-                    || (GROUP_ID_COMBINED_SI_3 == pGroupIdMajor.and(GROUP_ID_COMBINED_SI_3))
+        private val String.isUnifiedEchoPacket: Boolean
+            get() = (GROUP_ID_UNIFIED_EP == pGroupIdMajor.and(GROUP_ID_UNIFIED_EP))
+                    || (GROUP_ID_UNIFIED_EP_2 == pGroupIdMajor.and(GROUP_ID_UNIFIED_EP_2))
+                    || (GROUP_ID_UNIFIED_EP_3 == pGroupIdMajor.and(GROUP_ID_UNIFIED_EP_3))
 
         private val String.isBridgeCfgPacket: Boolean
             get() = GROUP_ID_BRIDGE == pGroupIdMajor && (
@@ -1076,7 +1115,7 @@ interface Packet {
                 return prefixMatches && lengthMatches
             }
 
-        private fun ScanResultInternal.toSensorBle5PacketOrNull(): String? {
+        private fun ScanResultInternal.toBle5PacketOrNull(): String? {
             try {
                 val normalized = scanRecord?.raw?.uppercase() ?: return null
                 var index = 0
@@ -1094,7 +1133,7 @@ interface Packet {
                     index = endIndex
                 }
 
-                return if (endIndex > 0) normalized.substring(4, endIndex).also {
+                return if (endIndex > 0) normalized.substring(0, endIndex).also {
                     if (BuildConfig.DEBUG) {
                         Reporter.log("Sensor BLE 5 packet: $it", beaconLogTag)
                     }
@@ -1104,14 +1143,14 @@ interface Packet {
             }
         }
 
-        private const val DATA_PACKET_LEN_CHARS = 58
+        const val DATA_PACKET_LEN_CHARS = 58
         private val GROUP_ID_META: UInt = "ec".toUInt(16)
         private val GROUP_ID_CONTROL: UInt = "ed".toUInt(16)
         private val GROUP_ID_BRIDGE: UInt = "ee".toUInt(16)
         private val GROUP_ID_SENSOR: UInt = "eb".toUInt(16)
-        private val GROUP_ID_COMBINED_SI: UInt = "3f".toUInt(16)
-        private val GROUP_ID_COMBINED_SI_2: UInt = "3d".toUInt(16)
-        private val GROUP_ID_COMBINED_SI_3: UInt = "3c".toUInt(16)
+        private val GROUP_ID_UNIFIED_EP: UInt = "3f".toUInt(16)
+        private val GROUP_ID_UNIFIED_EP_2: UInt = "3d".toUInt(16)
+        private val GROUP_ID_UNIFIED_EP_3: UInt = "3c".toUInt(16)
 
         fun from(data: String, scanRecord: ScanResultInternal): PacketAbstract? {
             if (scanRecord.isBridgeEarlyPacket) {
@@ -1121,8 +1160,8 @@ interface Packet {
             var finalData = data
 
             if (data.length != DATA_PACKET_LEN_CHARS) {
-                // Maybe Sensor BLE 5?
-                scanRecord.toSensorBle5PacketOrNull()?.let {
+                // Maybe BLE5?
+                scanRecord.toBle5PacketOrNull()?.let {
                     finalData = it
                 } ?: run {
                     Reporter.exception(
@@ -1141,7 +1180,7 @@ interface Packet {
                         else -> DataPacket(finalData, scanRecord)
                     }
                 }
-                finalData.isCombinedSiPacket -> CombinedSiPacket(finalData, scanRecord)
+                finalData.isUnifiedEchoPacket -> UnifiedEchoPacket(finalData, scanRecord)
                 finalData.isSensorMetaPacket -> ExternalSensorPacket(finalData, scanRecord) // should always execute BEFORE 'isMetaPacket'
                 finalData.isMetaPacket -> MetaPacket(finalData, scanRecord)
                 finalData.isControlPacket -> ControlPacket(finalData, scanRecord)

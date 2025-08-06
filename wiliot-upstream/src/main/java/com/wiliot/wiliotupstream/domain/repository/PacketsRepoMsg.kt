@@ -9,7 +9,7 @@ import com.wiliot.wiliotcore.model.BridgeEarlyPacket
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.BridgePacketAbstract
 import com.wiliot.wiliotcore.model.BridgeStatus
-import com.wiliot.wiliotcore.model.CombinedSiPacket
+import com.wiliot.wiliotcore.model.UnifiedEchoPacket
 import com.wiliot.wiliotcore.model.ControlPacket
 import com.wiliot.wiliotcore.model.DataPacket
 import com.wiliot.wiliotcore.model.DataPacketType
@@ -60,12 +60,12 @@ sealed class PacketsRepoMsg {
         }
         val siFilterPredicate: (Packet) -> Boolean = { packet ->
             val windowCondition = packet.timestamp + FILTER_TIME_WINDOW_SIZE < referredTime
-            val classificationCondition = packet is CombinedSiPacket
+            val classificationCondition = packet is UnifiedEchoPacket
             windowCondition && classificationCondition
         }
         val metaPacketFilterPredicate: (Packet) -> Boolean = { packet ->
             val windowCondition = packet.timestamp + FILTER_TIME_WINDOW_SIZE < referredTime
-            val classificationCondition = packet is BaseMetaPacket && packet !is CombinedSiPacket
+            val classificationCondition = packet is BaseMetaPacket && packet !is UnifiedEchoPacket
             windowCondition && classificationCondition
         }
         val managementFilterPredicate: (Packet) -> Boolean = { packet ->
@@ -130,7 +130,7 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
                     judgeBufferMeta.add(this)
                 }
 
-                this is CombinedSiPacket && Wiliot.configuration.enableDataTraffic -> {
+                this is UnifiedEchoPacket && Wiliot.configuration.enableDataTraffic -> {
                     judgeBufferMeta.add(this)
                 }
 
