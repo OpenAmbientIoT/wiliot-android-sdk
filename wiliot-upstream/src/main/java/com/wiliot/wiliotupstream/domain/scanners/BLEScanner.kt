@@ -26,6 +26,7 @@ class BLEScanner {
     private val filters = ArrayList<ScanFilter>()
     private val settings: ScanSettings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        .setLegacy(false)
         .build()
 
     @OptIn(ObsoleteCoroutinesApi::class)
