@@ -33,21 +33,13 @@ internal class NullableUIntJson : JsonSerializer<UInt?>, JsonDeserializer<UInt?>
 
 internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>, JsonDeserializer<MQTTBaseData> {
 
-    private fun String?.wrapWithBlePrefix(): String? {
-        return if (this.isNullOrBlank().not() && this?.startsWith("1E16", ignoreCase = true) == false) {
-            "1E16$this"
-        } else {
-            this
-        }
-    }
-
     override fun serialize(
         src: MQTTBaseData?,
         typeOfSrc: Type?,
         context: JsonSerializationContext?,
     ): JsonElement {
         val jsonObject = JsonObject()
-        jsonObject.addProperty("payload", src?.payload?.uppercase().wrapWithBlePrefix())
+        jsonObject.addProperty("payload", src?.payload?.uppercase())
         jsonObject.addProperty("sequenceId", src?.sequenceId)
         jsonObject.addProperty("rssi", src?.rssi)
         jsonObject.addProperty("timestamp", src?.timestamp)

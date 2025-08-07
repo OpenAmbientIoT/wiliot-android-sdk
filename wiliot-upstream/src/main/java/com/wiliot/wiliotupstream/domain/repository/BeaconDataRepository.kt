@@ -1,11 +1,12 @@
 package com.wiliot.wiliotupstream.domain.repository
 
+import com.wiliot.wiliotcore.model.AbstractEchoPacket
 import com.wiliot.wiliotcore.model.Ack
 import com.wiliot.wiliotcore.model.BasePacketData
 import com.wiliot.wiliotcore.model.BridgeEarlyPacket
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.BridgeStatus
-import com.wiliot.wiliotcore.model.CombinedSiPacket
+import com.wiliot.wiliotcore.model.UnifiedEchoPacket
 import com.wiliot.wiliotcore.model.MelModulePacket
 import com.wiliot.wiliotcore.model.Packet
 import com.wiliot.wiliotcore.model.PacketData
@@ -120,7 +121,7 @@ internal object BeaconDataRepository {
 
     internal fun sendPacketsFromVirtualBridge(payload: List<Packet>) {
         outerDataScope.launch {
-            payload.filterIsInstance<CombinedSiPacket>().takeIf { it.isEmpty().not() }?.let { si ->
+            payload.filterIsInstance<AbstractEchoPacket>().takeIf { it.isEmpty().not() }?.let { si ->
                 si.map {
                     PacketData(it)
                 }.let {
