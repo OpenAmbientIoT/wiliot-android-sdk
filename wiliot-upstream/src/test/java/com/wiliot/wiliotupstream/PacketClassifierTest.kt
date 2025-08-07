@@ -1,5 +1,6 @@
 package com.wiliot.wiliotupstream
 
+import android.util.SparseArray
 import com.wiliot.wiliotcore.model.BridgeConfigPacketV5
 import com.wiliot.wiliotcore.model.BridgeHbPacket
 import com.wiliot.wiliotcore.model.BridgeHbPacketV5
@@ -13,6 +14,8 @@ import com.wiliot.wiliotcore.utils.ScanResultInternal
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit4.MockKRule
+import io.mockk.mockk
+import io.mockk.mockkStatic
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -37,6 +40,7 @@ class PacketClassifierTest {
         private const val brgHbV1payload = "AFFD0000EE02015DDEEDCD9D8A76AEEF895320C1001E04460008000000"
         private const val brgConfigV5plusPayload = "C6FC0000EE010859000600120200E76A825D40880310600F061903000A"
         private const val brgMelPayload = "C6FC0000EE11084E1D42A11259F60212031060EEC50DF2C00000000000"
+        private const val pixelBle5DataPayload = "2616AFFD050080F509B668AFB4CA42A3681D3CC104228C54981B00D2DEDE9662BB33BC7510DC3C"
     }
 
     @MockK
@@ -46,11 +50,29 @@ class PacketClassifierTest {
 
     @Before
     fun setUp() {
+        mockkStatic(android.os.ParcelUuid::class)
+        val mockedUuid = mockk<android.os.ParcelUuid>()
+        every { android.os.ParcelUuid.fromString(any()) } returns mockedUuid
+
         every { btDevice.name } returns "NAME"
         every { btDevice.address } returns mockDeviceAddress
         every { scanResult.device } returns btDevice
         every { scanResult.isConnectable } returns false
         every { scanResult.rssi } returns mockScanRssi
+
+        val scanRecord = ScanResultInternal.ScanRecord(
+            serviceData = mapOf(),
+            manufacturerSpecificData = SparseArray<ByteArray>(),
+            deviceName = "NAME"
+        )
+        scanRecord.raw = pixelBle5DataPayload
+
+        every { scanResult.scanRecord } returns scanRecord
+    }
+
+    @Test
+    fun `Pixel BLE5 Data payload classified as DataPacket`() {
+        assertTrue(Packet.from(pixelBle5DataPayload, scanResult) is DataPacket)
     }
 
     @Test

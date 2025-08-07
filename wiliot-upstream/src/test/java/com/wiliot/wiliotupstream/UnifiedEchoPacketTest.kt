@@ -40,31 +40,31 @@ class UnifiedEchoPacketTest {
     }
 
     @Test
-    fun `SI payload classified as CombinedSiPacket`() {
+    fun `SI payload classified as UnifiedEchoPacket`() {
         assertTrue(Packet.from(combinedSiPayload, scanResult) is UnifiedEchoPacket)
     }
 
     @Test
-    fun `CombinedSiPacket contains correct Bridge ID`() {
+    fun `UnifiedEchoPacket contains correct Bridge ID`() {
         assertTrue((Packet.from(combinedSiPayload, scanResult) as? UnifiedEchoPacket)?.aliasBridgeId == mockDeviceAddress.replace(":", ""))
     }
 
     @Test
-    fun `CombinedSiPacket positive equal check works`() {
+    fun `UnifiedEchoPacket positive equal check works`() {
         val p1 = Packet.from(combinedSiPayload, scanResult) as? UnifiedEchoPacket
         val p2 = Packet.from(combinedSiPayload, scanResult) as? UnifiedEchoPacket
         assertTrue(p1 == p2)
     }
 
     @Test
-    fun `CombinedSiPacket negative equal check works`() {
+    fun `UnifiedEchoPacket negative equal check works`() {
         val p1 = Packet.from(combinedSiPayload, scanResult) as? UnifiedEchoPacket
         val p2 = Packet.from(combinedSiPayload2, scanResult) as? UnifiedEchoPacket
         assertFalse(p1 == p2)
     }
 
     @Test
-    fun `CombinedSiPacket contains RSSI from ScanResult`() {
+    fun `UnifiedEchoPacket contains RSSI from ScanResult`() {
         assertTrue((Packet.from(combinedSiPayload, scanResult) as? UnifiedEchoPacket)?.scanRssi == mockScanRssi)
     }
 
