@@ -1,9 +1,10 @@
 package com.wiliot.wiliotqueue.mqtt.model
 
 import com.wiliot.wiliotcore.WiliotCounter
+import com.wiliot.wiliotcore.model.Ble5EchoPacket
 import com.wiliot.wiliotcore.model.BridgeHbPacketAbstract
 import com.wiliot.wiliotcore.model.BridgePacketAbstract
-import com.wiliot.wiliotcore.model.CombinedSiPacket
+import com.wiliot.wiliotcore.model.UnifiedEchoPacket
 import com.wiliot.wiliotcore.model.DataPacketType
 import com.wiliot.wiliotcore.model.MelModulePacket
 import com.wiliot.wiliotcore.model.PacketData
@@ -44,23 +45,32 @@ class PackedDataMetaMQTT(
 ) : PackedDataMQTT(payload, rssi, timestamp) {
     companion object {
 
-        private fun PacketData.isCombinedSiData(): Boolean = packet is CombinedSiPacket
+        private fun PacketData.isBle5PixelEchoData(): Boolean = packet is Ble5EchoPacket
+
+        private fun PacketData.isUnifiedEchoPktData(): Boolean = packet is UnifiedEchoPacket
 
         private fun PacketData.isRetransmittedData(): Boolean = packet.value.startsWith(DataPacketType.RETRANSMITTED.prefix, ignoreCase = true)
 
         private fun PacketData.isSensorData(): Boolean = packet.value.startsWith(DataPacketType.SENSOR_DATA.prefix, ignoreCase = true)
 
         fun fromPacketData(packetData: PacketData) = when {
-            packetData.isCombinedSiData() -> PackedDataMetaMQTT(
-                payload = packetData.data,
+            packetData.isUnifiedEchoPktData() -> PackedDataMetaMQTT(
+                payload = packetData.data.wrapWithBle4Prefix(),
                 rssi = packetData.rssi,
                 timestamp = packetData.timestamp,
-                aliasBridgeId = (packetData.packet as CombinedSiPacket).aliasBridgeId,
+                aliasBridgeId = (packetData.packet as UnifiedEchoPacket).aliasBridgeId,
+                retransmitted = true
+            )
+
+            packetData.isBle5PixelEchoData() -> PackedDataMetaMQTT(
+                payload = packetData.data, // no wrapping for BLE5 Pixel data, use original payload
+                rssi = packetData.rssi,
+                timestamp = packetData.timestamp,
                 retransmitted = true
             )
 
             else -> if (packetData.isRetransmittedData() || packetData.isSensorData()) PackedDataMetaMQTT(
-                payload = packetData.data,
+                payload = packetData.data.wrapWithBle4Prefix(),
                 rssi = packetData.rssi,
                 timestamp = packetData.timestamp,
                 retransmitted = true // packetData.isRetransmittedData() || packetData.isSensorData()
@@ -71,6 +81,7 @@ class PackedDataMetaMQTT(
 
 }
 
+@Deprecated("This packet is deprecated and not used anymore")
 data class PackedDataInternalSensorMQTT(
     override val timestamp: Long,
     override val rssi: Int? = 0,
@@ -84,14 +95,14 @@ data class PackedDataInternalSensorMQTT(
 ) : PackedDataMQTT(payload, rssi, timestamp)
 
 //==============================================================================================
-// *** Utils ***
+// *** Utils (API) ***
 //==============================================================================================
 
-// region [Utils]
+// region [Utils (API)]
 
 fun BridgeHbPacketAbstract.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
-        payload = value,
+        payload = value.wrapWithBle4Prefix(),
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = aliasDeviceId().takeIf { this@toMqttData.apiVersion >= 9u }
@@ -100,7 +111,7 @@ fun BridgeHbPacketAbstract.toMqttData(): PackedEdgeDataMQTT {
 
 fun MelModulePacket.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
-        payload = value,
+        payload = value.wrapWithBle4Prefix(),
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = aliasDeviceId().takeIf { this@toMqttData.apiVersion >= 9u }
@@ -109,7 +120,7 @@ fun MelModulePacket.toMqttData(): PackedEdgeDataMQTT {
 
 fun BridgePacketAbstract.toMqttData(): PackedEdgeDataMQTT {
     return PackedEdgeDataMQTT(
-        payload = value,
+        payload = value.wrapWithBle4Prefix(),
         rssi = scanRssi,
         timestamp = timestamp,
         aliasBridgeId = null
@@ -118,6 +129,22 @@ fun BridgePacketAbstract.toMqttData(): PackedEdgeDataMQTT {
 
 fun PacketData.toMqttData(): PackedDataMetaMQTT? {
     return PackedDataMetaMQTT.fromPacketData(this)
+}
+
+// endregion
+
+//==============================================================================================
+// *** Utils (Internal) ***
+//==============================================================================================
+
+// region [Utils (Internal)]
+
+private fun String?.wrapWithBle4Prefix(): String? {
+    return if (this.isNullOrBlank().not() && this?.startsWith("1E16", ignoreCase = true) == false) {
+        "1E16$this"
+    } else {
+        this
+    }
 }
 
 // endregion
