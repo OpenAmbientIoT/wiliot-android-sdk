@@ -11,16 +11,16 @@
 # If no codebase changes are detected for a specific module, CI/CD will skip incrementing its version.
 
 modules:
-  wiliot-core: minor
-  wiliot-calibration: minor
-  wiliot-downstream: minor
-  wiliot-network-edge: minor
-  wiliot-network-meta: minor
-  wiliot-queue: minor
-  wiliot-resolve-edge: minor
-  wiliot-resolve-data: minor
-  wiliot-upstream: minor
-  wiliot-virtual-bridge: minor
-  wiliot-edge: minor
-  wiliot-advertising: minor
-  wiliot-dfu: minor
+  wiliot-core: patch
+  wiliot-calibration: patch
+  wiliot-downstream: patch
+  wiliot-network-edge: patch
+  wiliot-network-meta: patch
+  wiliot-queue: patch
+  wiliot-resolve-edge: patch
+  wiliot-resolve-data: patch
+  wiliot-upstream: patch
+  wiliot-virtual-bridge: patch
+  wiliot-edge: patch
+  wiliot-advertising: patch
+  wiliot-dfu: patch
