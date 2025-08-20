@@ -66,6 +66,7 @@ class PackedDataMetaMQTT(
                 payload = packetData.data, // no wrapping for BLE5 Pixel data, use original payload
                 rssi = packetData.rssi,
                 timestamp = packetData.timestamp,
+                aliasBridgeId = (packetData.packet as Ble5EchoPacket).aliasBridgeId,
                 retransmitted = true
             )
 
@@ -80,19 +81,6 @@ class PackedDataMetaMQTT(
     }
 
 }
-
-@Deprecated("This packet is deprecated and not used anymore")
-data class PackedDataInternalSensorMQTT(
-    override val timestamp: Long,
-    override val rssi: Int? = 0,
-    override val payload: String?,
-    val isSensor: Boolean = true,
-    val isEmbedded: Boolean = true,
-    val isScrambled: Boolean = false,
-    val nfpkt: Int = 0,
-    val sensorServiceId: String = "00000a",
-    val sensorId: String
-) : PackedDataMQTT(payload, rssi, timestamp)
 
 //==============================================================================================
 // *** Utils (API) ***
