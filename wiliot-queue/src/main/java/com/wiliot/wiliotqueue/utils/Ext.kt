@@ -57,13 +57,8 @@ internal class MQTTDataSerializerJson : JsonSerializer<MQTTBaseData>, JsonDeseri
                 }
             }
 
-            is PackedDataInternalSensorMQTT -> {
-                jsonObject.addProperty("nfpkt", src.nfpkt)
-                jsonObject.addProperty("isSensor", src.isSensor)
-                jsonObject.addProperty("isEmbedded", src.isEmbedded)
-                jsonObject.addProperty("isScrambled", src.isScrambled)
-                jsonObject.addProperty("sensorServiceId", src.sensorServiceId)
-                jsonObject.addProperty("sensorId", src.sensorId)
+            else -> {
+                // No additional properties for other types
             }
         }
         return jsonObject
