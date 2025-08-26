@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -27,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -404,6 +406,43 @@ private fun HealthCard(
                         fontSize = textSize,
                         lineHeight = lineHeight
                     )
+                }
+
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    Text(
+                        text = "BT pkts history (min):",
+                        fontSize = textSize,
+                        lineHeight = lineHeight,
+                        color = Color.Cyan
+                    )
+                    Spacer(
+                        modifier = Modifier.width(8.dp)
+                    )
+                    LazyRow {
+                        items(health.btPacketsCounterHistory.size) { index ->
+                            Text(
+                                text = health.btPacketsCounterHistory[index].toString(),
+                                fontSize = textSize,
+                                lineHeight = lineHeight,
+                                color = if (index > 0) {
+                                    val prev = health.btPacketsCounterHistory[index - 1]
+                                    val curr = health.btPacketsCounterHistory[index]
+                                    when {
+                                        curr >= prev -> Color.Green
+                                        prev > 0 && curr >= prev * 0.9 -> Color.Gray
+                                        else -> Color.Red
+                                    }
+                                } else {
+                                    Color.Gray
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                    }
                 }
 
                 Row(
