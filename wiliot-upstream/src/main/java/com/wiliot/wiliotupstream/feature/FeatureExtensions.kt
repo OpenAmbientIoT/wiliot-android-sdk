@@ -121,19 +121,6 @@ class Upstream private constructor() : WiliotUpstreamModule {
         mState.value = UpstreamState.RUNNING_BACKGROUND
     }
 
-    @OptIn(ObsoleteCoroutinesApi::class)
-    @ExperimentalCoroutinesApi
-    @Deprecated("Try to avoid using this method")
-    fun restartScanner(softRestart: Boolean = false) {
-        Reporter.log("restartScanner(softRestart: $softRestart)", logTag)
-        if (softRestart) {
-            withExtraDataProcessor { flagBeacons(shouldUpdate = true) }
-        } else {
-            BeaconDataRepository.clearList()
-        }
-        scanner?.restartScanner()
-    }
-
     /**
      * Stop [com.wiliot.wiliotupstream.domain.service.ForegroundService].
      */
