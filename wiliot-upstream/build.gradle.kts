@@ -79,6 +79,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:${project.extra["mockkVersion"]}")
 
+    implementation(libs.androidx.core.ktx)
+
     androidTestImplementation("org.robolectric:robolectric:3.5")
     androidTestImplementation("org.mockito:mockito-core:4.8.0")
 

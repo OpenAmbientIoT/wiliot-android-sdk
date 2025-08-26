@@ -1,7 +1,6 @@
 package com.wiliot.wiliotcore.health
 
 import com.wiliot.wiliotcore.Wiliot
-import com.wiliot.wiliotcore.config.VirtualBridgeConfig
 import com.wiliot.wiliotcore.model.AdditionalGatewayConfig
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +23,17 @@ object WiliotHealthMonitor {
      * Used to update counter of received BT packets during last minute
      */
     fun updateLastMinuteCounter(c: Int) {
-        mState.update { it.copy(btPacketsLastMinute = c) }
+        val newHistory = mState.value.btPacketsCounterHistory.toMutableList()
+        if (newHistory.size >= 360) {
+            newHistory.removeAt(0)
+        }
+        newHistory.add(c)
+        mState.update {
+            it.copy(
+                btPacketsLastMinute = c,
+                btPacketsCounterHistory = newHistory
+            )
+        }
     }
 
     /**
@@ -131,6 +140,10 @@ data class WiliotHealth(
      * Indicates that [WiliotHealthMonitor] launched and active
      */
     val monitorLaunched: Boolean = false,
+    /**
+     * History of BT packets received during last minutes (each item represents one minute)
+     */
+    val btPacketsCounterHistory: List<Int> = emptyList(),
     /**
      * Counter of BT packets received during last minute
      */
