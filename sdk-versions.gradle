@@ -1,19 +1,19 @@
 ext {
     // BOM version
-    bomVersionName = "3.7.1"
+    bomVersionName = "3.8.0"
 
     // SDK module versions
-    coreVersionName = "3.7.1"
-    calibrationVersionName = "1.13.1"
-    downstreamVersionName = "1.13.1"
-    networkEdgeVersionName = "1.12.1"
-    networkMetaVersionName = "1.12.1"
-    queueVersionName = "1.11.1"
-    resolveEdgeVersionName = "1.12.1"
-    resolveDataVersionName = "1.12.1"
-    upstreamVersionName = "1.14.1"
-    virtualBridgeVersionName = "0.15.1"
-    edgeVersionName = "0.13.1"
-    advertisingVersionName = "1.13.1"
-    dfuVersionName = "1.13.1"
+    coreVersionName = "3.8.0"
+    calibrationVersionName = "1.13.2"
+    downstreamVersionName = "1.13.2"
+    networkEdgeVersionName = "1.12.2"
+    networkMetaVersionName = "1.12.2"
+    queueVersionName = "1.11.2"
+    resolveEdgeVersionName = "1.12.2"
+    resolveDataVersionName = "1.12.2"
+    upstreamVersionName = "1.15.0"
+    virtualBridgeVersionName = "0.15.2"
+    edgeVersionName = "0.13.2"
+    advertisingVersionName = "1.13.2"
+    dfuVersionName = "1.13.2"
 }
