@@ -360,16 +360,27 @@ internal object VirtualBridgeDataRepository {
         Reporter.log("processIncomingMelPacket($packet)", logTag)
         if (packet.isActionGetModule) {
             Reporter.log("processIncomingMelPacket($packet) -> ActionGetModule", logTag)
-            if (packet.containsGetInterface) {
-                Reporter.log("processIncomingMelPacket($packet) -> Get_Interface", logTag)
-                repoScope.launch {
-                    repoActor.send(VBridgeRepoMsg.Interface)
+            when {
+                packet.containsGetInterface -> {
+                    Reporter.log("processIncomingMelPacket($packet) -> Get_Interface", logTag)
+                    repoScope.launch {
+                        repoActor.send(VBridgeRepoMsg.Interface)
+                    }
                 }
-            }
-            if (packet.containsGetDatapath) {
-                Reporter.log("processIncomingMelPacket($packet) -> Get_Datapath", logTag)
-                repoScope.launch {
-                    repoActor.send(VBridgeRepoMsg.Configuration)
+
+                packet.containsGetDatapath -> {
+                    Reporter.log("processIncomingMelPacket($packet) -> Get_Datapath", logTag)
+                    repoScope.launch {
+                        repoActor.send(VBridgeRepoMsg.Configuration)
+                    }
+                }
+
+                else -> {
+                    Reporter.exception(
+                        "processIncomingMelPacket($packet) -> ActionGetModule without known requests",
+                        IllegalArgumentException("Unknown ActionGetModule request"),
+                        where = logTag
+                    )
                 }
             }
             return
@@ -447,7 +458,7 @@ internal object VirtualBridgeDataRepository {
         get() {
             val origin = this.uppercase()
             if (origin.isActionGetModule.not()) return false
-            return (origin.substring(32..33).toUInt(16) and bitMask(1000000) shr 6) == 1u
+            return (origin.substring(26..27).toUInt(16) and bitMask(1000000) shr 6) == 1u
         }
 
     private val String.isConfigurationPacket: Boolean
