@@ -328,10 +328,24 @@ internal object VirtualBridgeDataRepository {
             edgeScope.ensureActive()
             edgeScope.initHbJob()
             edgeScope.initIfJob()
+            edgeScope.launch {
+                // Initial module packet delivery
+                delay(1500)
+                if (ifJob != null && ifJob?.isActive == true) {
+                    repoActor.send(VBridgeRepoMsg.Configuration)
+                }
+            }
         } catch (e: CancellationException) {
             edgeScope = buildNewScope().apply {
                 initHbJob()
                 initIfJob()
+                launch {
+                    // Initial module packet delivery
+                    delay(1500)
+                    if (ifJob != null && ifJob?.isActive == true) {
+                        repoActor.send(VBridgeRepoMsg.Configuration)
+                    }
+                }
             }
         }
     }
