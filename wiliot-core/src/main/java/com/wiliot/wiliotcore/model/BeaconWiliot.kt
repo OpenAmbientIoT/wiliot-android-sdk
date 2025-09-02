@@ -1255,7 +1255,7 @@ val ScanResultInternal.wiliotBridgeEarlyPacket: PacketAbstract?
             }
         } != null
         if (hasBridgeDeviceName) {
-            Packet.from("brgEarlyPckt", this@wiliotBridgeEarlyPacket)
+            Packet.from("00000000000000000000000000000000000000000000000000000000000000", this@wiliotBridgeEarlyPacket)
         } else null
     }
 

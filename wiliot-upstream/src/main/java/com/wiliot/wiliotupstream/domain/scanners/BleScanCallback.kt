@@ -107,7 +107,17 @@ internal object BleScanCallback : ScanCallback() {
         }
 
         if (Wiliot.configuration.btPacketsCounterEnabled) {
-            packetsCounterMinute += 1
+            // fast check for Wiliot pkt
+            val wltPredicate: (String?) -> Boolean = pr@{ pkt ->
+                if (pkt.isNullOrBlank()) return@pr false
+                val first8 = pkt.take(8).lowercase() // L T V(2) C6 FC 90 FC
+                listOf("c6fc", "90fc", "affd", "05af", "0500").any { uuid ->
+                    first8.contains(uuid)
+                }
+            }
+            if (wltPredicate(internalCopy.scanRecord?.raw)) {
+                packetsCounterMinute += 1
+            }
         }
     }
 
