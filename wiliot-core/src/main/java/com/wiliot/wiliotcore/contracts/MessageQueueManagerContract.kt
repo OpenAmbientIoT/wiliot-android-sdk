@@ -16,7 +16,7 @@ interface MessageQueueManagerContract {
      * configuration value specified in [com.wiliot.wiliotcore.config.Configuration]
      */
     fun publishPayload(
-        payload: MutableSet<BasePacketData>,
+        payload: LinkedHashSet<BasePacketData>,
     )
 
     /**

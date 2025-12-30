@@ -53,16 +53,21 @@ sealed class PacketsRepoMsg {
         private const val MANAGEMENT_TIME_WINDOW_SIZE = 1000L
         const val SYNC_PERIOD = 1000L
         var referredTime = 0L
+        // Filter 1: DataPackets - all packets with wiliot service UUID (pixels/Bridge/sensors)
         val dataPacketFilterPredicate: (Packet) -> Boolean = { packet ->
             val windowCondition = packet.timestamp + FILTER_TIME_WINDOW_SIZE < referredTime
             val classificationCondition = packet is DataPacket
             windowCondition && classificationCondition
         }
+        
+        // Filter 2: UnifiedEchoPackets - Retransmitted packets by the Bridge with group IDs 0x3f, 0x3d, or 0x3c
         val siFilterPredicate: (Packet) -> Boolean = { packet ->
             val windowCondition = packet.timestamp + FILTER_TIME_WINDOW_SIZE < referredTime
             val classificationCondition = packet is UnifiedEchoPacket
             windowCondition && classificationCondition
         }
+        
+        // Filter 3: BaseMetaPackets -Sensor side info (0xeb) packets, side info packet (oxec), and Ble5EchoPacket
         val metaPacketFilterPredicate: (Packet) -> Boolean = { packet ->
             val windowCondition = packet.timestamp + FILTER_TIME_WINDOW_SIZE < referredTime
             val classificationCondition = packet is BaseMetaPacket && packet !is UnifiedEchoPacket
@@ -172,15 +177,21 @@ fun CoroutineScope.packetsRepoActor() = actor<PacketsRepoMsg> {
         }
 
         referredTime = System.currentTimeMillis()
+        val siOutOfWindow: List<BaseMetaPacket> =
+            judgeBufferMeta.filter(siFilterPredicate)
+        
         val dataPacketsOutOfWindow: List<DataPacket> = judgeBufferData.filter(
             dataPacketFilterPredicate
-        )
+        ).filter { dataPacket ->
+            // Remove any DataPackets that match packets in siOutOfWindow (same value+timestamp)
+            // This prevents duplicates when a packet with UUID "c6fc" could be either DataPacket or UnifiedEchoPacket
+            val packetKey = "${dataPacket.value}:${dataPacket.timestamp}"
+            siOutOfWindow.none { siPacket -> "${siPacket.value}:${siPacket.timestamp}" == packetKey }
+        }
 
         val metaOutOfWindow: List<BaseMetaPacket> = if (TrafficRule.shouldUploadRetransmittedDataTraffic)
             judgeBufferMeta.filter(metaPacketFilterPredicate)
         else emptyList() // early skip if no retransmitted data traffic is allowed
-        val siOutOfWindow: List<BaseMetaPacket> =
-            judgeBufferMeta.filter(siFilterPredicate)
         val bridgeOutOfWindow: List<BridgePacketAbstract> =
             judgeBufferBridge.filter(managementFilterPredicate)
         val hbOutOfWindow: List<BridgeHbPacketAbstract> =

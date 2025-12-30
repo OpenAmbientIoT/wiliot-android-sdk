@@ -177,7 +177,10 @@ class ForegroundService : Service() {
             serviceScope.launch {
                 BeaconDataRepository.instantPayload.collectLatest {
                     Reporter.log("publish instant pl from Service (scs: $serviceCheckStr)", logTag)
-                    doPublishUsingPayload(it.toMutableSet())
+                    // Use LinkedHashSet to preserve insertion order, then sort by timestamp to maintain scanner order
+                    val orderedSet = LinkedHashSet<BasePacketData>()
+                    it.sortedBy { it.timestamp }.forEach { orderedSet.add(it) }
+                    doPublishUsingPayload(orderedSet)
                 }
             }
             serviceScope.launch {
@@ -263,7 +266,7 @@ class ForegroundService : Service() {
         }
     }
 
-    private fun doPublishUsingPayload(payload: MutableSet<BasePacketData>) {
+    private fun doPublishUsingPayload(payload: LinkedHashSet<BasePacketData>) {
         serviceScope.launch {
             queueManager.publishPayload(
                 payload

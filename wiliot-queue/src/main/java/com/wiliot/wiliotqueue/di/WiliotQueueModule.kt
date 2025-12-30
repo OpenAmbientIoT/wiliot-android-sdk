@@ -147,7 +147,7 @@ class MessageQueueManager private constructor(
     // region [Contract]
 
     override fun publishPayload(
-        payload: MutableSet<BasePacketData>
+        payload: LinkedHashSet<BasePacketData>
     ) {
         enqueuePublishBeaconsDataMQTT(payload)
     }
@@ -424,41 +424,45 @@ class MessageQueueManager private constructor(
     }
 
     private fun enqueuePublishBeaconsDataMQTT(
-        beacons: MutableSet<BasePacketData>,
+        beacons: LinkedHashSet<BasePacketData>,
     ) {
         Reporter.log("enqueuePublishBeaconsDataMQTT", logTag)
 
-        beacons.mapNotNull {
-            when (it) {
-                is PacketData -> it.toMqttData().takeIf { packedData ->
-                    // Since PIXELS_ONLY means that packets will be processed by VirtualBridge,
-                    // we always should apply rule packedData.aliasBridgeId != null || packedData.retransmitted
+        // Sort by timestamp to maintain scanner order when assigning sequenceIDs
+        beacons
+            .sortedBy { it.timestamp }
+            .mapNotNull {
+                when (it) {
+                    is PacketData -> it.toMqttData().takeIf { packedData ->
+                        // Since PIXELS_ONLY means that packets will be processed by VirtualBridge,
+                        // we always should apply rule packedData.aliasBridgeId != null || packedData.retransmitted
 
-                    /*when (Wiliot.configuration.dataOutputTrafficFilter) {
-                        DataOutputTrafficFilter.BRIDGES_AND_PIXELS -> true
-                        DataOutputTrafficFilter.BRIDGES_ONLY -> packedData.aliasBridgeId != null || packedData.retransmitted
-                        DataOutputTrafficFilter.PIXELS_ONLY -> packedData.aliasBridgeId == null && packedData.retransmitted.not()
-                    }*/
+                        /*when (Wiliot.configuration.dataOutputTrafficFilter) {
+                            DataOutputTrafficFilter.BRIDGES_AND_PIXELS -> true
+                            DataOutputTrafficFilter.BRIDGES_ONLY -> packedData.aliasBridgeId != null || packedData.retransmitted
+                            DataOutputTrafficFilter.PIXELS_ONLY -> packedData.aliasBridgeId == null && packedData.retransmitted.not()
+                        }*/
 
-                    packedData != null && (packedData.aliasBridgeId != null || packedData.retransmitted)
-                }
+                        packedData != null && (packedData.aliasBridgeId != null || packedData.retransmitted)
+                    }
 
-                else -> null
-            }
-        }.takeIf {
-            it.isNotEmpty()
-        }?.let {
-            sendAddToQueue(
-                it
-            ) {
-                try {
-                    // Basically, no termination operation needed. May be removed in future
-                    Reporter.log("Terminator for beacons executed", logTag)
-                } catch (ex: Exception) {
-                    Reporter.exception("Terminator for beacons failed", ex, logTag)
+                    else -> null
                 }
             }
-        }
+            .takeIf {
+                it.isNotEmpty()
+            }?.let {
+                sendAddToQueue(
+                    it
+                ) {
+                    try {
+                        // Basically, no termination operation needed. May be removed in future
+                        Reporter.log("Terminator for beacons executed", logTag)
+                    } catch (ex: Exception) {
+                        Reporter.exception("Terminator for beacons failed", ex, logTag)
+                    }
+                }
+            }
 
     }
 
