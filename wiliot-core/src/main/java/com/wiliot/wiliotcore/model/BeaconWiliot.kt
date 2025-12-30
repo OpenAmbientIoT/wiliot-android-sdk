@@ -1152,6 +1152,8 @@ interface Packet {
         private val GROUP_ID_UNIFIED_EP_2: UInt = "3d".toUInt(16)
         private val GROUP_ID_UNIFIED_EP_3: UInt = "3c".toUInt(16)
 
+        const val EARLY_BRG_PACKET_DUMMY_PAYLOAD = "00000000000000000000000000000000000000000000000000000000000000"
+
         fun from(data: String, scanRecord: ScanResultInternal): PacketAbstract? {
             if (scanRecord.isBridgeEarlyPacket) {
                 return BridgeEarlyPacket(scanResult = scanRecord)
@@ -1255,7 +1257,9 @@ val ScanResultInternal.wiliotBridgeEarlyPacket: PacketAbstract?
             }
         } != null
         if (hasBridgeDeviceName) {
-            Packet.from("00000000000000000000000000000000000000000000000000000000000000", this@wiliotBridgeEarlyPacket)
+            // Means, it's a packet from Bridge that in connectable (not operational) mode
+            // used in OTA flow, or for hot stateflow for nearby devices (edge resolve)
+            Packet.from(Packet.EARLY_BRG_PACKET_DUMMY_PAYLOAD, this@wiliotBridgeEarlyPacket)
         } else null
     }
 
