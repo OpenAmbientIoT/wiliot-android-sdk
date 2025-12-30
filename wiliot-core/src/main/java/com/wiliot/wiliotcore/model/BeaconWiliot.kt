@@ -1279,8 +1279,8 @@ val ScanResultInternal.wiliotServiceData: PacketAbstract?
     get() = scanRecord?.run {
         with(serviceData) {
             when {
-                this?.contains(BeaconWiliot.serviceUuid) ?: false -> {
-                    this?.get(BeaconWiliot.serviceUuid)?.run {
+                this?.contains(BeaconWiliot.serviceUuid) == true -> {
+                    this[BeaconWiliot.serviceUuid]?.run {
                         Packet.from(
                             DataPacketType.DIRECT.prefix + toHexString(),
                             this@wiliotServiceData
@@ -1288,8 +1288,8 @@ val ScanResultInternal.wiliotServiceData: PacketAbstract?
                     }
                 }
 
-                this?.contains(BeaconWiliot.serviceUuid2) ?: false -> {
-                    this?.get(BeaconWiliot.serviceUuid2)?.run {
+                this?.contains(BeaconWiliot.serviceUuid2) == true -> {
+                    this[BeaconWiliot.serviceUuid2]?.run {
                         Packet.from(
                             DataPacketType.RETRANSMITTED.prefix + toHexString(),
                             this@wiliotServiceData
@@ -1297,8 +1297,8 @@ val ScanResultInternal.wiliotServiceData: PacketAbstract?
                     }
                 }
 
-                this?.contains(BeaconWiliot.sensorServiceUuid) ?: false -> {
-                    this?.get(BeaconWiliot.sensorServiceUuid)?.run {
+                this?.contains(BeaconWiliot.sensorServiceUuid) == true -> {
+                    this[BeaconWiliot.sensorServiceUuid]?.run {
                         Packet.from(
                             DataPacketType.SENSOR_DATA.prefix + toHexString(),
                             this@wiliotServiceData
@@ -1306,8 +1306,8 @@ val ScanResultInternal.wiliotServiceData: PacketAbstract?
                     }
                 }
 
-                this?.contains(BeaconWiliot.serviceUuidD2p2) ?: false -> {
-                    this?.get(BeaconWiliot.serviceUuidD2p2)?.run {
+                this?.contains(BeaconWiliot.serviceUuidD2p2) == true -> {
+                    this[BeaconWiliot.serviceUuidD2p2]?.run {
                         Packet.from(
                             DataPacketType.SHORT_SD.prefix + toHexString(),
                             this@wiliotServiceData
