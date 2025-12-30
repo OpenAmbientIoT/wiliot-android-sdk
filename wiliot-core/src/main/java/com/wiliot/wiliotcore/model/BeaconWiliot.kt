@@ -1192,10 +1192,10 @@ interface Packet {
                     }
                 }
 
-                data.isMelModulePacket -> MelModulePacket(finalData, scanRecord)
+                finalData.isMelModulePacket -> MelModulePacket(finalData, scanRecord)
 
-                data.isBridgeACK -> BridgeACKPacket(finalData, scanRecord)
-                data.isHBMessage -> with(finalData) {
+                finalData.isBridgeACK -> BridgeACKPacket(finalData, scanRecord)
+                finalData.isHBMessage -> with(finalData) {
                     when {
                         isHbV5 -> BridgeHbPacketV5(this, scanRecord)
                         else -> BridgeHbPacket(this, scanRecord)
